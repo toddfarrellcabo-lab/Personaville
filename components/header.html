@@ -1,0 +1,35 @@
+<header id="personaville-header" class="personaville-media" data-state="full">
+  <section class="personaville-hero-stage" data-header-view="full" aria-label="Personaville welcome artwork">
+    <div class="personaville-hero-frame">
+      <img
+        class="personaville-hero__image"
+        src="assets/images/personaville-header.png"
+        alt="Welcome to Personaville. What’s your dilemma?"
+      >
+
+      <button
+        id="playButton"
+        class="personaville-play"
+        type="button"
+        aria-label="Play Personaville music"
+        aria-pressed="false"
+        aria-describedby="personavilleAudioStatus"
+        title="Play music"
+      >
+        Play
+      </button>
+    </div>
+  </section>
+
+  <div class="personaville-mini" data-header-view="compact" aria-label="Personaville music player">
+    <div class="personaville-mini__brand">Personaville</div>
+    <div class="personaville-mini__status" id="personavilleAudioStatus" aria-live="polite">Paused</div>
+  </div>
+
+  <audio id="bgMusic" loop preload="metadata">
+    <source
+      src="audio/8bit-Personaville-loop.mp3"
+      type="audio/mpeg"
+    >
+  </audio>
+</header>

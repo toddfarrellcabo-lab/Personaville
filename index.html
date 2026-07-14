@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personaville</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/header.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <main class="app">
+    <nav class="sidebar" aria-label="Primary navigation">
+      <div class="sidebar-brand" aria-label="Application identity">
+        <div class="sidebar-brand__title">Personaville</div>
+        <div class="sidebar-brand__subtitle">Market persona offer database</div>
+      </div>
+      <button class="nav active" data-view="personas" type="button" aria-current="page">Personas</button>
+      <button class="nav" data-view="export" type="button">Export Cart</button>
+      <button class="nav" data-view="manage" type="button">Manage</button>
+      <button class="nav" data-view="admin" type="button">Admin</button>
+    </nav>
+
+    <section class="content">
+      <div id="personaville-header-container" class="personaville-header-shell"></div>
+
+      <section id="personas" class="view active">
+        <div class="section-head">
+          <h2>Persona Library</h2>
+          <button id="clearSelection" class="btn small" type="button">Clear Detail</button>
+        </div>
+        <div class="persona-library-layout">
+          <aside class="filter-panel" aria-labelledby="personaFilterHeading">
+            <h3 id="personaFilterHeading">Filters</h3>
+            <div class="filter-control">
+              <label for="globalSearch">Search</label>
+              <input id="globalSearch" class="search" placeholder="Search persona, speed, modifier, or reference ID" autocomplete="off" aria-describedby="searchHelp" />
+              <p id="searchHelp" class="filter-help">Searches persona name, displayed speed, modifier, and Reference ID.</p>
+            </div>
+            <fieldset class="filter-control filter-fieldset">
+              <legend>Pricing Set</legend>
+              <div id="pricingFilter" class="choice-group segmented" role="radiogroup" aria-label="Pricing Set"></div>
+            </fieldset>
+            <fieldset class="filter-control filter-fieldset">
+              <legend>Family Group</legend>
+              <div id="familyFilter" class="choice-group family-choices" aria-label="Family Group"></div>
+              <button id="clearFamilyGroup" class="btn small" type="button">Clear Family Group</button>
+            </fieldset>
+            <div id="activeFilterSummary" class="active-filter-summary" aria-live="polite">No filters applied</div>
+            <button id="clearFilters" class="btn" type="button">Clear Filters</button>
+          </aside>
+          <section class="persona-results" aria-labelledby="personaResultsHeading">
+            <div class="results-head">
+              <h3 id="personaResultsHeading">Results</h3>
+              <span id="personaResultCount" class="pill gray" aria-live="polite">0 personas found</span>
+            </div>
+            <div id="personaTiles" class="tiles persona-grid" aria-live="polite"></div>
+          </section>
+          <aside id="detailPanel" class="detail empty"><div class="empty-state-panel"><strong>Select a persona to view details.</strong></div></aside>
+        </div>
+      </section>
+
+      <section id="admin" class="view">
+        <div class="section-head">
+          <h2>Admin</h2>
+          <span id="dbStatus" class="pill gray">No database loaded</span>
+        </div>
+        <div class="admin-tabs" role="tablist" aria-label="Admin sections">
+          <button id="admin-tab-overview" class="admin-tab active" role="tab" type="button" aria-selected="true" aria-controls="admin-overview" data-admin-section="overview">Overview</button>
+          <button id="admin-tab-health" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-health" data-admin-section="health">Database Health</button>
+          <button id="admin-tab-publish" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-publish" data-admin-section="publish">Publish Database</button>
+          <button id="admin-tab-modifiers" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-modifiers" data-admin-section="modifiers">Modifiers</button>
+          <button id="admin-tab-settings" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-settings" data-admin-section="settings">Settings</button>
+        </div>
+
+        <section id="admin-overview" class="admin-panel active" role="tabpanel" aria-labelledby="admin-tab-overview" tabindex="0">
+          <div id="sourceBanner" class="source-banner" role="status" aria-live="polite"></div>
+          <div id="kpis" class="kpis dashboard-overview" aria-label="Database summary metrics"></div>
+        </section>
+
+        <section id="admin-health" class="admin-panel" role="tabpanel" aria-labelledby="admin-tab-health" tabindex="0" hidden>
+          <div class="section-head"><h3>Database Health</h3></div>
+          <div id="healthList" class="health-list" aria-live="polite"></div>
+        </section>
+
+        <section id="admin-publish" class="admin-panel" role="tabpanel" aria-labelledby="admin-tab-publish" tabindex="0" hidden>
+          <div class="section-head"><h3>Publish Database</h3></div>
+          <div class="publish-controls" aria-labelledby="publishControlsHeading">
+            <h3 id="publishControlsHeading">Publishing Controls</h3>
+            <div class="publish-action-grid">
+              <div class="publish-action-card">
+                <label class="btn primary" title="Upload the edited Excel workbook into browser memory.">
+                  Upload Workbook
+                  <input id="workbookUpload" type="file" accept=".xlsx,.xls" hidden aria-label="Upload workbook into browser memory">
+                </label>
+                <p class="muted">Upload an .xlsx or .xls persona database workbook.</p>
+                <p class="sr-only">The selected workbook is loaded into browser memory only; it is not uploaded to a server or written back to the repository.</p>
+              </div>
+              <div class="publish-action-card">
+                <button id="loadBundled" class="btn" type="button" title="Reload database/persona-db.json from the published site.">Load Published Database</button>
+                <p class="muted">Reload database/persona-db.json from the published site.</p>
+              </div>
+              <div class="publish-action-card">
+                <button id="downloadUpdatedJson" class="btn" type="button" disabled title="Available after Upload Workbook loads a workbook.">Download Updated JSON</button>
+                <p class="muted">Available after an uploaded workbook loads successfully.</p>
+              </div>
+            </div>
+          </div>
+          <div id="publishPanel" class="publish-panel"></div>
+          <div id="buildSummary" class="build-summary" hidden></div>
+          <div id="downloadInstructions" class="download-instructions" hidden>Replace database/persona-db.json in GitHub with this downloaded file.</div>
+          <div class="publishing-tips">
+            <h3>Publishing Tips</h3>
+            <ul>
+              <li>Upload Workbook only loads data into browser memory.</li>
+              <li>Download Updated JSON creates the file to upload.</li>
+              <li>Replace <code>database/persona-db.json</code> in GitHub.</li>
+              <li>GitHub Pages will publish the updated site.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="admin-modifiers" class="admin-panel" role="tabpanel" aria-labelledby="admin-tab-modifiers" tabindex="0" hidden>
+          <div class="section-head"><h3>Modifiers</h3></div>
+          <div id="modifierList" class="modifier-list" aria-live="polite"></div>
+        </section>
+
+        <section id="admin-settings" class="admin-panel" role="tabpanel" aria-labelledby="admin-tab-settings" tabindex="0" hidden>
+          <div class="section-head"><h3>Settings</h3></div>
+          <div class="settings-card">
+            <h3>Folder Setup</h3>
+            <pre>Personaville/
+├── index.html
+├── database/persona-db.xlsx
+├── database/persona-db.json
+├── assets/icons/
+├── assets/images/
+├── audio/
+└── tests/</pre>
+            <p>The bundled JSON lets the site open immediately. Upload <code>database/persona-db.xlsx</code> with Upload Workbook in Publish Database after edits.</p>
+          </div>
+        </section>
+      </section>
+
+      <section id="manage" class="view">
+        <div class="manage-card" aria-labelledby="manageHeading">
+          <p class="eyebrow">Personaville Manager</p>
+          <h2 id="manageHeading">Coming Soon</h2>
+          <p class="muted">A polished workspace for managing the Personaville database is planned for a future release.</p>
+          <ul class="coming-soon-list">
+            <li>Edit personas</li>
+            <li>Edit speed options and pricing</li>
+            <li>Manage modifiers and disclaimers</li>
+            <li>Upload icons and images</li>
+            <li>Version history and publishing tools</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="export" class="view">
+        <div class="section-head">
+          <h2>Export Cart</h2>
+          <span id="exportCartCount" class="pill gray" aria-live="polite">0 personas in Export Cart</span>
+        </div>
+        <p class="muted">Assemble the final customer-facing persona set for print, PDF, or summary sharing. Download / Save as PDF opens your browser print dialog so you can choose the PDF destination when supported.</p>
+        <div id="exportCartEmpty" class="empty-state-panel" hidden>
+          <strong>Your Export Cart is empty.</strong>
+          <p class="muted">Add personas from the Persona Library to build a multi-export set.</p>
+          <button class="btn primary empty-action" type="button" onclick="setView('personas')">Return to Personas</button>
+        </div>
+        <div id="exportCartActions">
+          <div class="export-controls">
+            <label for="exportPersona">Single persona preview</label>
+            <select id="exportPersona"></select>
+            <span id="selectedCount" class="pill gray" aria-live="polite">0 personas in Export Cart</span>
+          </div>
+          <ol id="exportCartList" class="export-cart-list" aria-label="Selected personas"></ol>
+          <div class="export-actions">
+            <button id="selectAllVisible" class="btn" type="button">Select All Visible</button>
+            <button id="clearExportSelection" class="btn" type="button">Clear Cart</button>
+            <button id="printPersona" class="btn primary" type="button">Print All</button>
+            <button id="savePdf" class="btn" type="button">Download / Save as PDF</button>
+            <button id="copySummary" class="btn" type="button">Copy Summary</button>
+            <button class="btn" type="button" disabled title="Email sending is coming soon.">Email Set — Coming Soon</button>
+          </div>
+          <div id="printArea" class="print-stack"></div>
+        </div>
+      </section>
+
+    </section>
+  </main>
+
+  <aside id="exportCartTray" class="export-cart-tray" aria-label="Export Cart selection tray" hidden></aside>
+
+  <script src="js/database.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
