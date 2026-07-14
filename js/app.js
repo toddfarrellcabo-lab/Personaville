@@ -1,4 +1,20 @@
 
+let exportSound = null;
+
+function playExportSound(){
+  if(typeof Audio !== "function") return;
+  if(!exportSound){
+    exportSound = new Audio("assets/audio/uhoh.mp3");
+  }
+  exportSound.currentTime = 0;
+  exportSound.play().catch(() => {});
+}
+
+function runExportAction(action){
+  playExportSound();
+  action();
+}
+
 function setView(name, options = {}){
   document.querySelectorAll(".nav").forEach(n=>{
     const active = n.dataset.view===name;
@@ -110,11 +126,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("exportPersona").addEventListener("change", renderPrintArea);
   document.getElementById("selectAllVisible").addEventListener("click", selectAllVisiblePersonas);
   document.getElementById("clearExportSelection").addEventListener("click", clearExportSelection);
-  document.getElementById("printPersona").addEventListener("click", ()=>window.print());
-  document.getElementById("savePdf").addEventListener("click", ()=>window.print());
-  document.getElementById("copySummary").addEventListener("click", copySelectedSummary);
+  document.getElementById("printPersona").addEventListener("click", () => runExportAction(printCombinedExportPdf));
+  document.getElementById("savePdf").addEventListener("click", () => runExportAction(printCombinedExportPdf));
+  document.getElementById("downloadSummary").addEventListener("click", () => runExportAction(downloadSelectedSummary));
+  document.getElementById("copySummary").addEventListener("click", () => runExportAction(copySelectedSummary));
   window.addEventListener("beforeprint", fitPrintCardsToLetter);
-  window.addEventListener("afterprint", resetPrintScaling);
+  window.addEventListener("afterprint", () => {
+    resetPrintScaling();
+    restorePrintDocumentTitle();
+  });
 
   // Try published database on load. If local browser blocks fetch, user can still upload workbook.
   try{

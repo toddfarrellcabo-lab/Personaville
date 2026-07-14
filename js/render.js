@@ -589,7 +589,7 @@ function renderPrintArea(){
   area.innerHTML="";
   const selected = selectedExportPersonas();
   if(selected.length){
-    selected.forEach(p => area.appendChild(printablePersonaCard(p)));
+    selected.forEach((p, index) => area.appendChild(printablePersonaCard(p, index, selected.length)));
     return;
   }
   const p = currentExportPersona();
@@ -601,17 +601,35 @@ function renderPrintArea(){
     el("strong",{},["No personas selected for multi-export."]),
     el("p",{class:"muted"},["Use the tile checkboxes or Select All Visible to print multiple personas. The single-persona preview remains below."])
   ]));
-  area.appendChild(printablePersonaCard(p));
+  area.appendChild(printablePersonaCard(p, 0, 1));
 }
-function printablePersonaCard(p){
-  const card = el("section",{class:"print-card"},[]);
+function printablePersonaCard(p, index=0, total=1){
+  const safeName = p.PersonaName || "Untitled persona";
+  const card = el("section",{class:"print-card print-persona-page"},[]);
   const inner = el("div",{class:"print-card-inner"},[]);
-  card.appendChild(inner);
-  inner.appendChild(el("div",{class:"print-title"},[
-    iconSlot(p.IconPath, `${p.PersonaName || "Persona"} icon`, {type:"Persona", id:p.PersonaID, name:p.PersonaName, file:p.PromoIcon}),
-    el("h2",{},[p.PersonaName])
+  card.appendChild(el("header",{class:"print-page-header"},[
+    el("div",{},[
+      el("div",{class:"print-page-kicker"},[`Persona ${index + 1} of ${total}`]),
+      el("h1",{},[safeName])
+    ]),
+    el("div",{class:"print-page-meta"},[
+      el("span",{},[`Family Group: ${p.FamilyGroup || "—"}`]),
+      el("span",{},[`Pricing Set: ${p.PricingSet || "—"}`]),
+      el("span",{class:"internal-ref"},[`PersonaID: ${p.PersonaID || "—"}`])
+    ])
   ]));
-  inner.appendChild(el("div",{class:"meta"},[`Family Group: ${p.FamilyGroup} • Pricing Set: ${p.PricingSet}`]));
+  card.appendChild(inner);
+  card.appendChild(el("footer",{class:"print-page-footer"},[
+    el("span",{},["Personaville"]),
+    el("span",{},[p.PersonaID ? `${safeName} • ${p.PersonaID}` : safeName]),
+    el("span",{},[`Generated ${new Date().toLocaleDateString()}`]),
+    el("span",{class:"print-page-number"},[])
+  ]));
+  inner.appendChild(el("div",{class:"print-title"},[
+    iconSlot(p.IconPath, `${safeName} icon`, {type:"Persona", id:p.PersonaID, name:p.PersonaName, file:p.PromoIcon}),
+    el("h2",{},[safeName])
+  ]));
+  inner.appendChild(el("div",{class:"meta"},[`Family Group: ${p.FamilyGroup || "—"} • Pricing Set: ${p.PricingSet || "—"}`]));
   const chips = el("div",{class:"chips"},[]);
   if(truthy(p.EquipInc)) chips.appendChild(el("span",{class:"chip feature"},["✓ Equip Inc"]));
   if(truthy(p.SymSpeed)) chips.appendChild(el("span",{class:"chip feature"},["✓ Sym Speed"]));
@@ -621,23 +639,75 @@ function printablePersonaCard(p){
   inner.appendChild(el("div",{class:"detail-section disclaimer"},[p.disclaimer?.DisclaimerText || ""]));
   return card;
 }
-function copySelectedSummary(){
+
+function selectedSummaryText(){
   const personas = selectedExportPersonas();
   const list = personas.length ? personas : [currentExportPersona()].filter(Boolean);
-  if(!list.length) return;
+  if(!list.length) return "";
   const lines=[];
   list.forEach((p, index)=>{
     if(index) lines.push("", "---", "");
     lines.push(p.PersonaName,`Family Group: ${p.FamilyGroup}`,`Pricing Set: ${p.PricingSet}`,"");
     p.speeds.forEach(s=>lines.push(`${s.SpeedOption} ${s.DisplaySpeed} - ${money(s.FirstPaidPrice)} - Reg. ${money(s.RegularRate)}`));
   });
-  navigator.clipboard.writeText(lines.join("\n"));
+  return lines.join("\n");
+}
+function copySelectedSummary(){
+  const summary = selectedSummaryText();
+  if(!summary) return;
+  navigator.clipboard.writeText(summary);
   const countEl = document.getElementById("selectedCount");
   if(countEl) countEl.textContent = "Summary copied";
 }
 
+function downloadSelectedSummary(){
+  const summary = selectedSummaryText();
+  if(!summary) return;
+  const blob = new Blob([summary], {type:"text/plain"});
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = `${exportPdfDocumentTitle()}-Summary.txt`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  const countEl = document.getElementById("selectedCount");
+  if(countEl) countEl.textContent = "Summary downloaded";
+}
+
+function filenameSafeText(value){
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^A-Za-z0-9._-]+/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "");
+}
+
+let normalDocumentTitle = null;
+function exportPdfDocumentTitle(){
+  const personas = selectedExportPersonas();
+  if(personas.length === 1){
+    return filenameSafeText(personas[0].PersonaName) || filenameSafeText(personas[0].PersonaID) || "Personaville-Export-1-Persona";
+  }
+  return `Personaville-Export-${personas.length}-Personas`;
+}
+function printCombinedExportPdf(){
+  const personas = selectedExportPersonas();
+  if(!personas.length) return;
+  normalDocumentTitle = document.title;
+  document.title = exportPdfDocumentTitle();
+  window.print();
+}
+function restorePrintDocumentTitle(){
+  if(normalDocumentTitle === null) return;
+  document.title = normalDocumentTitle;
+  normalDocumentTitle = null;
+}
+
 function resetPrintScaling(){
-  document.querySelectorAll(".print-card").forEach(card => {
+  document.querySelectorAll(".print-persona-page").forEach(card => {
     card.style.removeProperty("--print-scale");
   });
 }
@@ -645,7 +715,7 @@ function fitPrintCardsToLetter(){
   resetPrintScaling();
   const maxScale = 1;
   const minScale = 0.82;
-  document.querySelectorAll(".print-card").forEach(card => {
+  document.querySelectorAll(".print-persona-page").forEach(card => {
     const inner = card.querySelector(".print-card-inner");
     if(!inner) return;
     const availableHeight = card.clientHeight || 0;
