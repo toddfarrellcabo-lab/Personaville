@@ -133,6 +133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener("beforeprint", fitPrintCardsToLetter);
   window.addEventListener("afterprint", () => {
     resetPrintScaling();
+    removeDedicatedPrintDocument();
     restorePrintDocumentTitle();
   });
 

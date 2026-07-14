@@ -685,19 +685,48 @@ function filenameSafeText(value){
     .replace(/^[-.]+|[-.]+$/g, "");
 }
 
+function exportTimestamp(date=new Date()){
+  const pad = value => String(value).padStart(2, "0");
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
+}
+
 let normalDocumentTitle = null;
-function exportPdfDocumentTitle(){
+let activePrintContainer = null;
+function exportPdfDocumentTitle(date=new Date()){
   const personas = selectedExportPersonas();
-  if(personas.length === 1){
-    return filenameSafeText(personas[0].PersonaName) || filenameSafeText(personas[0].PersonaID) || "Personaville-Export-1-Persona";
+  const timestamp = exportTimestamp(date);
+  const personaNames = personas.map(persona => filenameSafeText(persona.PersonaName)).filter(Boolean);
+  if(personas.length === 1 && personaNames[0]) return personaNames[0];
+  if(personaNames.length) return `Personaville-${personas.length}-Personas-${timestamp}`;
+  return `Personaville-Export-${timestamp}`;
+}
+function removeDedicatedPrintDocument(){
+  if(activePrintContainer){
+    activePrintContainer.remove();
+    activePrintContainer = null;
   }
-  return `Personaville-Export-${personas.length}-Personas`;
+}
+function selectedPersonaPrintLayouts(personas){
+  const source = document.createElement("div");
+  personas.forEach((persona, index) => source.appendChild(printablePersonaCard(persona, index, personas.length)));
+  return Array.from(source.querySelectorAll(".print-persona-page"), card => card.cloneNode(true));
+}
+function createDedicatedPrintDocument(personas){
+  removeDedicatedPrintDocument();
+  const container = document.createElement("div");
+  container.className = "persona-print-document";
+  container.setAttribute("aria-hidden", "true");
+  selectedPersonaPrintLayouts(personas).forEach(card => container.appendChild(card));
+  document.body.appendChild(container);
+  activePrintContainer = container;
+  return container;
 }
 function printCombinedExportPdf(){
   const personas = selectedExportPersonas();
   if(!personas.length) return;
   normalDocumentTitle = document.title;
   document.title = exportPdfDocumentTitle();
+  createDedicatedPrintDocument(personas);
   window.print();
 }
 function restorePrintDocumentTitle(){
