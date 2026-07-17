@@ -1,6 +1,7 @@
 
 let selectedPersona = null;
 const exportSelection = new Set();
+const EXPORT_SELECTION_STORAGE_KEY = "personaville-v2-export-cart";
 
 function el(tag, attrs={}, children=[]){
   const node = document.createElement(tag);
@@ -42,6 +43,7 @@ function modifierChip(m){
 }
 
 function renderAll(){
+  restoreExportSelection();
   renderKpis();
   fillFilters();
   renderTiles();
@@ -51,6 +53,7 @@ function renderAll(){
   renderSourceBanner();
   renderPublishPanel();
   renderEditingStatus();
+  renderWorkbookImportPanel();
   renderChangeReview();
   renderPersonaEditor();
   renderSpeedOptionEditor();
@@ -66,6 +69,62 @@ function renderAll(){
   const download = document.getElementById("downloadUpdatedJson");
   if(download) download.disabled = !(DB.loadedFromWorkbook || EditingSession.isEditing);
 }
+
+function renderWorkbookImportPanel(){
+  const panel = document.getElementById("workbookImportPanel");
+  if(!panel || typeof workbookImportState !== "function") return;
+  const state = workbookImportState();
+  panel.innerHTML = "";
+  if(!state || state.status === "idle") return;
+  panel.appendChild(el("h4",{},[`Import Workbook${state.filename ? `: ${state.filename}` : ""}`]));
+  panel.appendChild(el("ol",{class:"import-stage-list"},(state.stages || []).map(stage => el("li",{class:stage.status},[`${stage.label}${stage.status === "active" ? "…" : stage.status === "complete" ? " ✓" : ""}`]))));
+  if(state.errors?.length){
+    panel.appendChild(el("div",{class:"import-errors"},[
+      el("strong",{},["Validation errors"]),
+      el("ul",{},state.errors.slice(0,12).map(error => el("li",{},[error.message || String(error)])))
+    ]));
+    return;
+  }
+  if(state.warnings?.length){
+    panel.appendChild(el("ul",{},state.warnings.map(w => el("li",{class:"import-warning"},[w.message || String(w)]))));
+  }
+  if(state.summary && Object.keys(state.summary).length){
+    panel.appendChild(el("div",{class:"import-summary-grid"},Object.values(state.summary).map(item => el("div",{class:"import-summary-card"},[
+      el("strong",{},[item.label]),
+      el("div",{},[`Added ${item.added} · Changed ${item.changed} · Removed ${item.removed} · Unchanged ${item.unchanged}`]),
+      item.largeDeletion ? el("div",{class:"import-warning"},["Large deletion warning: review before applying."]) : null
+    ]))));
+    panel.appendChild(el("details",{},[
+      el("summary",{},["Inspect field-level changes"]),
+      el("ul",{},(state.changes || []).slice(0,200).map(change => el("li",{},[`${change.recordType} ${change.recordName} — ${change.field}: ${change.before} → ${change.after}`])))
+    ]));
+  }
+  if(state.status === "ready"){
+    const hasDeletes = Object.values(state.summary || {}).some(item => item.removed > 0);
+    panel.appendChild(el("div",{class:"import-actions"},[
+      el("button",{class:"btn",type:"button",onclick:()=>{ resetWorkbookImportState(); renderAll(); }},["Cancel Import"]),
+      el("button",{class:"btn",type:"button",onclick:()=>downloadDatabaseWorkbook("working")},["Export Current Working Copy"]),
+      el("button",{class:"btn primary",type:"button",onclick:()=>applyWorkbookImportFromPanel(hasDeletes)},["Replace Working Copy"])
+    ]));
+  }
+  if(["applied","restored"].includes(state.status)){
+    panel.appendChild(el("div",{class:"import-actions"},[
+      state.status === "applied" ? el("button",{class:"btn",type:"button",onclick:()=>{ restorePreImportState(); renderAll(); }},["Restore Pre-Import State"]) : null,
+      el("button",{class:"btn primary",type:"button",onclick:()=>setView("review")},["Open Review Changes"])
+    ]));
+  }
+}
+function applyWorkbookImportFromPanel(hasDeletes){
+  try{
+    if(editingHasUnsavedChanges() && !confirm("The working copy has unsaved changes. Replace it with the imported workbook?")) return;
+    if(hasDeletes && !confirm("This import proposes deletions. Apply these deletions to the working copy for review?")) return;
+    const result = applyPreparedWorkbookImport({replaceWorkingCopy:true, confirmDeletions:true});
+    renderAll();
+    setView("review");
+    alert(`Workbook import loaded into the working copy for review. ${result.changes.length} field-level change(s) are ready. Published data was not changed.`);
+  }catch(err){ alert(err.message); }
+}
+
 function renderEditingStatus(){
   const status = document.getElementById("editingStatus");
   if(status){
@@ -77,6 +136,8 @@ function renderEditingStatus(){
   const undo = document.getElementById("undoEdit"), redo = document.getElementById("redoEdit");
   if(undo) undo.disabled = !canUndoEdit();
   if(redo) redo.disabled = !canRedoEdit();
+  const exportWorking = document.getElementById("exportWorkingWorkbook");
+  if(exportWorking) exportWorking.disabled = editingSessionState().initState !== "ready";
   if(state){
     const changes = Object.values(editingSessionState().recordStates || {}).reduce((acc, value) => { acc[value] = (acc[value] || 0) + 1; return acc; }, {});
     state.innerHTML = "";
@@ -128,7 +189,7 @@ function renderPersonaStartPanel(){
   const form = document.getElementById("personaEditorForm");
   form.innerHTML = "";
   form.dataset.originalPersonaId = "";
-  form.appendChild(emptyState("Choose a persona management action.", "Create a blank draft, create from an existing persona, or view existing personas read-only first."));
+  form.appendChild(emptyState("Choose a Persona Editor action.", "Create a blank draft, create from an existing persona, or view existing personas read-only first."));
   updatePersonaEditorSaveState("Saved");
   const save = document.getElementById("personaEditorSave");
   const cancel = document.getElementById("personaEditorCancel");
@@ -914,6 +975,7 @@ function renderTiles(){
   const count = document.getElementById("personaResultCount");
   if(count) count.textContent = personas.length ? `${personas.length} persona${personas.length === 1 ? "" : "s"} found` : "No personas found";
   updateFilterSummary();
+  updatePersonaBulkSelectionToolbar();
   const d2 = document.getElementById("personaTiles");
   [d2].forEach(box => {
     if(!box) return;
@@ -1169,6 +1231,37 @@ function fillExportPicker(){
   renderPrintArea();
   renderExportCartList();
 }
+function restoreExportSelection(){
+  if(exportSelection.size || typeof browserStorage !== "function") return;
+  const storage = browserStorage();
+  if(!storage) return;
+  try{
+    const saved = JSON.parse(storage.getItem(EXPORT_SELECTION_STORAGE_KEY) || "[]");
+    if(Array.isArray(saved)) saved.forEach(id => { if(id) exportSelection.add(id); });
+  }catch(err){
+    storage.removeItem(EXPORT_SELECTION_STORAGE_KEY);
+  }
+}
+function persistExportSelection(){
+  if(typeof browserStorage !== "function") return;
+  const storage = browserStorage();
+  if(!storage) return;
+  storage.setItem(EXPORT_SELECTION_STORAGE_KEY, JSON.stringify([...exportSelection]));
+}
+function validPersonaIDs(){ return new Set(DB.personas.map(p => p.PersonaID).filter(Boolean)); }
+function pruneExportSelection(){
+  const valid = validPersonaIDs();
+  [...exportSelection].forEach(id => { if(!valid.has(id)) exportSelection.delete(id); });
+}
+function refreshExportSelectionViews(){
+  pruneExportSelection();
+  persistExportSelection();
+  syncExportSelectionUI();
+  renderPrintArea();
+  renderExportCartTray();
+  renderTiles();
+}
+
 function selectedExportPersonas(){
   return [...exportSelection]
     .map(id => DB.personas.find(p => p.PersonaID === id))
@@ -1182,31 +1275,28 @@ function toggleExportPersona(personaID, checked){
   if(!personaID) return;
   if(checked) exportSelection.add(personaID);
   else exportSelection.delete(personaID);
-  syncExportSelectionUI();
-  renderPrintArea();
-  renderExportCartTray();
-  renderTiles();
+  refreshExportSelectionViews();
 }
 function removeExportPersona(personaID){
   exportSelection.delete(personaID);
-  syncExportSelectionUI();
-  renderPrintArea();
-  renderExportCartTray();
-  renderTiles();
+  refreshExportSelectionViews();
 }
+function selectAllPersonas(){
+  DB.personas.forEach(p => { if(p.PersonaID) exportSelection.add(p.PersonaID); });
+  refreshExportSelectionViews();
+}
+function deselectAllPersonas(){ clearExportSelection(); }
 function selectAllVisiblePersonas(){
   visiblePersonas().forEach(p => { if(p.PersonaID) exportSelection.add(p.PersonaID); });
-  syncExportSelectionUI();
-  renderPrintArea();
-  renderExportCartTray();
-  renderTiles();
+  refreshExportSelectionViews();
+}
+function deselectVisiblePersonas(){
+  visiblePersonas().forEach(p => { if(p.PersonaID) exportSelection.delete(p.PersonaID); });
+  refreshExportSelectionViews();
 }
 function clearExportSelection(){
   exportSelection.clear();
-  syncExportSelectionUI();
-  renderPrintArea();
-  renderExportCartTray();
-  renderTiles();
+  refreshExportSelectionViews();
 }
 function syncExportSelectionUI(){
   const count = exportSelection.size;
@@ -1215,9 +1305,31 @@ function syncExportSelectionUI(){
   if(countEl) countEl.textContent = label;
   const pageCount = document.getElementById("exportCartCount");
   if(pageCount) pageCount.textContent = label;
+  updatePersonaBulkSelectionToolbar();
   document.querySelectorAll(".select-persona input[type='checkbox']").forEach(input => {
     input.checked = exportSelection.has(input.closest("article")?.dataset?.personaId || input.value);
   });
+}
+
+function updatePersonaBulkSelectionToolbar(){
+  const total = DB.personas.length;
+  const selected = exportSelection.size;
+  const visible = visiblePersonas();
+  const filtersActive = personaFiltersActive();
+  const text = filtersActive ? `Showing ${visible.length} of ${total} · ${selected} selected` : `${selected} of ${total} personas selected`;
+  const status = document.getElementById("personaSelectionCount");
+  if(status) status.textContent = total ? text : "0 selected";
+  const hasVisible = visible.length > 0;
+  const hasSelected = selected > 0;
+  const setDisabled = (id, disabled) => { const button = document.getElementById(id); if(button) button.disabled = disabled; };
+  setDisabled("selectAllPersonas", total === 0);
+  setDisabled("deselectAllPersonas", !hasSelected);
+  setDisabled("selectVisiblePersonas", !hasVisible);
+  setDisabled("deselectVisiblePersonas", !hasVisible);
+  setDisabled("viewExportCart", !hasSelected);
+  setDisabled("clearPersonaCart", !hasSelected);
+  setDisabled("clearExportSelection", !hasSelected);
+  setDisabled("selectAllVisible", !hasVisible);
 }
 
 function renderExportCartTray(){

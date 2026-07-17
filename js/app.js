@@ -58,7 +58,33 @@ function refreshEditingStatus(){
   if(typeof renderEditingStatus === "function") renderEditingStatus();
 }
 
+const VIEW_ALIASES = {
+  "manage-personas":"manage",
+  "database-manager":"manage",
+  database:"manage"
+};
+
+const VIEW_TITLES = {
+  personas:"View Personas",
+  review:"Data Explorer",
+  export:"Export Cart",
+  manage:"Database Manager",
+  admin:"Admin"
+};
+
+function canonicalViewName(name){
+  const normalized = String(name || "personas").replace(/^#/, "");
+  return VIEW_ALIASES[normalized] || normalized;
+}
+
+function viewNameFromLocation(){
+  const hash = window.location.hash.replace(/^#/, "");
+  const candidate = canonicalViewName(hash);
+  return document.getElementById(candidate)?.classList.contains("view") ? candidate : "personas";
+}
+
 function setView(name, options = {}){
+  name = canonicalViewName(name);
   document.querySelectorAll(".nav").forEach(n=>{
     const active = n.dataset.view===name;
     n.classList.toggle("active", active);
@@ -71,6 +97,12 @@ function setView(name, options = {}){
   }
   if(typeof window.setPersonavilleHeaderState === "function"){
     window.setPersonavilleHeaderState(name === "personas" ? "full" : "compact");
+  }
+  if(VIEW_TITLES[name]){
+    document.title = `Personaville v2 Preview — ${VIEW_TITLES[name]}`;
+  }
+  if(options.updateHash !== false && window.location.hash !== `#${name}`){
+    window.history.replaceState(null, "", `#${name}`);
   }
   const heading = document.getElementById(name)?.querySelector("h2");
   if(heading && options.focus !== false){
@@ -123,7 +155,8 @@ async function loadPersonavilleHeader(){
 
 document.addEventListener("DOMContentLoaded", async () => {
   loadPersonavilleHeader();
-  setView("personas", {focus:false});
+  setView(viewNameFromLocation(), {focus:false, updateHash:false});
+  window.addEventListener("hashchange", () => setView(viewNameFromLocation(), {focus:false, updateHash:false}));
   document.querySelectorAll(".nav").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.view)));
   document.querySelectorAll(".admin-tab").forEach(tab => {
     tab.addEventListener("click", () => setAdminSection(tab.dataset.adminSection, {focus:true}));
@@ -157,6 +190,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("downloadUpdatedJson").addEventListener("click", downloadUpdatedJson);
   document.getElementById("downloadPublishingPackage")?.addEventListener("click", downloadPublishingPackage);
+  document.getElementById("exportPublishedWorkbook")?.addEventListener("click", () => downloadDatabaseWorkbook("published"));
+  document.getElementById("exportWorkingWorkbook")?.addEventListener("click", () => downloadDatabaseWorkbook("working"));
+  document.getElementById("workbookImport")?.addEventListener("change", async (e)=>{
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if(!file) return;
+    try{
+      await prepareWorkbookImportFile(file);
+      renderAll();
+    }catch(err){
+      if(typeof resetWorkbookImportState === "function") resetWorkbookImportState();
+      alert("Could not prepare workbook import: " + err.message);
+      renderAll();
+    }
+  });
   document.getElementById("loadBundled").addEventListener("click", async ()=>{
     if(!warnIfUnsavedChanges("Loading the published database will discard unsaved working-copy changes. Continue?")) return;
     try{
@@ -176,6 +224,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("exportPersona").addEventListener("change", renderPrintArea);
   document.getElementById("selectAllVisible").addEventListener("click", selectAllVisiblePersonas);
   document.getElementById("clearExportSelection").addEventListener("click", clearExportSelection);
+  document.getElementById("selectAllPersonas")?.addEventListener("click", selectAllPersonas);
+  document.getElementById("deselectAllPersonas")?.addEventListener("click", deselectAllPersonas);
+  document.getElementById("selectVisiblePersonas")?.addEventListener("click", selectAllVisiblePersonas);
+  document.getElementById("deselectVisiblePersonas")?.addEventListener("click", deselectVisiblePersonas);
+  document.getElementById("viewExportCart")?.addEventListener("click", () => setView("export"));
+  document.getElementById("clearPersonaCart")?.addEventListener("click", clearExportSelection);
   document.getElementById("printPersona").addEventListener("click", () => runExportAction(printCombinedExportPdf));
   document.getElementById("savePdf").addEventListener("click", () => runExportAction(printCombinedExportPdf));
   document.getElementById("downloadSummary").addEventListener("click", () => runExportAction(downloadSelectedSummary));
@@ -313,6 +367,36 @@ async function downloadPublishingPackage(){
     alert("Review the downloaded package, then commit the included database, assets, reports, and release notes to GitHub. Never modify the published site directly.");
     if(typeof markWorkingCopyDownloaded === "function") markWorkingCopyDownloaded();
     renderAll();
+  }catch(err){
+    alert(err.message);
+  }
+}
+
+
+function downloadDatabaseWorkbook(source){
+  try{
+    const healthRows = typeof workbookHealthRows === "function" ? workbookHealthRows(sourceRawForWorkbook(source)) : buildHealth();
+    const health = typeof workbookHealthCounts === "function" ? workbookHealthCounts(healthRows) : {errors:0, warnings:0};
+    const status = document.getElementById("workbookExportStatus");
+    let confirmedHealthErrors = false;
+    if(source === "working" && health.errors > 0){
+      confirmedHealthErrors = window.confirm(`The working copy has ${health.errors} health error(s). Export a backup workbook anyway?`);
+      if(!confirmedHealthErrors) return;
+    }else if(health.warnings > 0 && status){
+      status.textContent = `Export includes ${health.warnings} health warning(s).`;
+    }
+    const date = new Date();
+    const bytes = databaseWorkbookBytes(source, {date, confirmedHealthErrors});
+    const blob = new Blob([bytes], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = databaseWorkbookFilename(source, date);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    if(status) status.textContent = `Downloaded ${link.download}`;
   }catch(err){
     alert(err.message);
   }
