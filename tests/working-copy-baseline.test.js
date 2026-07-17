@@ -1,0 +1,42 @@
+const assert = require('assert');
+const fs = require('fs');
+const vm = require('vm');
+const context = { console, fetch: async () => { throw new Error('fetch is not used in this test'); }, XLSX: null, TextEncoder };
+vm.createContext(context);
+vm.runInContext(fs.readFileSync('js/database.js', 'utf8'), context);
+const publishedRaw = JSON.parse(fs.readFileSync('database/persona-db.json', 'utf8'));
+context.applyRawDatabase(publishedRaw, {source: 'bundled', filename: 'database/persona-db.json'});
+context.startEditingSession();
+assert.strictEqual(context.editingChangeList().length, 0, 'fresh published load has no changes');
+assert.strictEqual(context.editingHasUnsavedChanges(), false, 'fresh published load has no unsaved changes');
+context.resetWorkingCopyFromPublished();
+assert.strictEqual(context.editingChangeList().length, 0, 'reset from published has no changes');
+assert.strictEqual(context.editingHasUnsavedChanges(), false, 'reset from published has no unsaved changes');
+
+const legacyRaw = JSON.parse(JSON.stringify(publishedRaw));
+legacyRaw.README = [{ Note: 'Instruction row' }, { Note: 'Section heading' }];
+delete legacyRaw['05_Personas'][0].Fiber;
+legacyRaw['05_Personas'][0].IconPath = 'assets/icons/runtime-only.svg';
+legacyRaw['09_Icons'][0].ResolvedPath = 'assets/icons/runtime-only.svg';
+context.applyRawDatabase(legacyRaw, {source: 'bundled', filename: 'database/persona-db.json'});
+context.startEditingSession();
+assert.strictEqual(context.editingChangeList().length, 0, 'canonical defaults and runtime fields do not create false changes');
+assert(!context.editingChangeList().some(change => change.sheet === 'README' || change.recordKey.includes('README')), 'README rows are excluded from change review');
+
+const edited = context.activeDatabaseSnapshot();
+const originalName = edited['05_Personas'][0].PersonaName;
+edited['05_Personas'][0].PersonaName = `${originalName} intentional`;
+context.updateWorkingCopy(edited, 'persona-save');
+const changes = context.editingChangeList();
+assert.strictEqual(changes.length, 1, 'one intentional persona field edit creates one change');
+assert.strictEqual(changes[0].sheet, '05_Personas');
+assert.strictEqual(changes[0].field, 'PersonaName');
+assert.strictEqual(changes[0].before, originalName);
+assert.strictEqual(changes[0].after, `${originalName} intentional`);
+
+context.markDatabaseHealthReviewed();
+const packageFiles = context.publishingPackageFiles({overrideHealthErrors: true});
+const changeSummary = JSON.parse(new TextDecoder().decode(packageFiles.find(file => file.path === 'reports/change-summary.json').bytes));
+assert.strictEqual(changeSummary.changes.length, 1, 'publishing package reports only the genuine edit');
+assert(!JSON.stringify(changeSummary).includes('README:Row'), 'publishing package change summary excludes README rows');
+console.log('Working-copy baseline canonicalization excludes metadata, ignores runtime fields, preserves genuine edits, and packages only true changes.');

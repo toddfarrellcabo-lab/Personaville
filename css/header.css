@@ -83,6 +83,23 @@
   letter-spacing:.02em;
 }
 
+.personaville-preview-badge{
+  display:inline-flex;
+  align-items:center;
+  margin-left:.55rem;
+  padding:.18rem .48rem;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:999px;
+  background:rgba(255,255,255,.10);
+  color:#f4edf6;
+  font-size:.66rem;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  vertical-align:middle;
+}
+
+
 .personaville-mini__status{
   display:inline-flex;
   align-items:center;

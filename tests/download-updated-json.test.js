@@ -16,12 +16,18 @@ assert.strictEqual(context.resolveIconPath('icon-Standard.png'), 'assets/icons/i
 assert.strictEqual(context.resolveIconPath('assets/icons/icon-Standard.png'), 'assets/icons/icon-Standard.png');
 assert.strictEqual(context.resolveIconPath('icons/icon-Standard.png'), 'assets/icons/icon-Standard.png');
 assert.strictEqual(context.resolveIconPath('./assets/icons/icon-Standard.png'), 'assets/icons/icon-Standard.png');
+assert.strictEqual(context.resolveIconPath('assets/icons/icons/icon-Standard.png'), 'assets/icons/icon-Standard.png');
+assert.strictEqual(context.resolveIconPath('assets/icons/assets/icons/icon-Standard.png'), 'assets/icons/icon-Standard.png');
 const correctedSchedule = workbookRaw['07_PricingSchedules'].find(row => row.ScheduleID === 'SCH_091');
 assert(correctedSchedule, 'fixture should include SCH_091');
 correctedSchedule.DisplayLabel = 'SCH_091 uploaded workbook correction';
 correctedSchedule.Price = 91.91;
 
 context.applyRawDatabase(workbookRaw, {source: 'workbook'});
+context.startEditingSession();
+const iconPersona = context.databaseState().personas[0];
+const savedIconPersona = context.savePersonaDraft({...iconPersona, PromoIcon: 'assets/icons/icons/icon-Standard.png'}, iconPersona.PersonaID, 'Unit Test');
+assert.strictEqual(savedIconPersona.PromoIcon, 'icon-Standard.png', 'Persona Editor saves normalized promotion icon filenames only');
 const exported = JSON.parse(context.updatedDatabaseJson());
 const exportedCorrection = exported['07_PricingSchedules'].find(row => row.ScheduleID === 'SCH_091');
 
