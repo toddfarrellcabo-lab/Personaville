@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Personaville</title>
+  <title>Personaville v2 Preview</title>
   <link rel="stylesheet" href="css/app.css" />
   <link rel="stylesheet" href="css/header.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -12,12 +12,14 @@
   <main class="app">
     <nav class="sidebar" aria-label="Primary navigation">
       <div class="sidebar-brand" aria-label="Application identity">
-        <div class="sidebar-brand__title">Personaville</div>
+        <div class="sidebar-brand__title">Personaville v2 Preview</div>
+        <div class="preview-badge" aria-label="Development Preview">Development Preview</div>
         <div class="sidebar-brand__subtitle">Market persona offer database</div>
       </div>
-      <button class="nav active" data-view="personas" type="button" aria-current="page">Personas</button>
+      <button class="nav active" data-view="personas" type="button" aria-current="page">View Personas</button>
+      <button class="nav" data-view="review" type="button">Data Explorer</button>
       <button class="nav" data-view="export" type="button">Export Cart</button>
-      <button class="nav" data-view="manage" type="button">Manage</button>
+      <button class="nav" data-view="manage" type="button">Manage Personas</button>
       <button class="nav" data-view="admin" type="button">Admin</button>
     </nav>
 
@@ -37,6 +39,17 @@
               <input id="globalSearch" class="search" placeholder="Search persona, speed, modifier, or reference ID" autocomplete="off" aria-describedby="searchHelp" />
               <p id="searchHelp" class="filter-help">Searches persona name, displayed speed, modifier, and Reference ID.</p>
             </div>
+            <fieldset class="filter-control filter-fieldset">
+              <legend>Lifecycle</legend>
+              <select id="lifecycleFilter" aria-label="Lifecycle status">
+                <option value="Active" selected>Active now</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Draft">Draft</option>
+                <option value="Expired">Expired</option>
+                <option value="Inactive">Inactive</option>
+                <option value="all">All statuses</option>
+              </select>
+            </fieldset>
             <fieldset class="filter-control filter-fieldset">
               <legend>Pricing Set</legend>
               <div id="pricingFilter" class="choice-group segmented" role="radiogroup" aria-label="Pricing Set"></div>
@@ -70,6 +83,7 @@
           <button id="admin-tab-health" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-health" data-admin-section="health">Database Health</button>
           <button id="admin-tab-publish" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-publish" data-admin-section="publish">Publish Database</button>
           <button id="admin-tab-modifiers" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-modifiers" data-admin-section="modifiers">Modifiers</button>
+          <button id="admin-tab-assets" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-assets" data-admin-section="assets">Asset Manager</button>
           <button id="admin-tab-settings" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-settings" data-admin-section="settings">Settings</button>
         </div>
 
@@ -80,6 +94,13 @@
 
         <section id="admin-health" class="admin-panel" role="tabpanel" aria-labelledby="admin-tab-health" tabindex="0" hidden>
           <div class="section-head"><h3>Database Health</h3></div>
+          <div class="persona-editor-toolbar health-export-actions">
+            <button id="adminExportHealthReport" class="btn" type="button">Export Health Report</button>
+            <button id="adminExportHealthWarnings" class="btn" type="button">Export Warnings Only</button>
+            <button id="adminExportHealthErrors" class="btn" type="button">Export Errors Only</button>
+            <button id="adminDownloadHealthLog" class="btn" type="button">Download Health Log</button>
+            <span id="adminHealthExportStatus" class="muted" aria-live="polite"></span>
+          </div>
           <div id="healthList" class="health-list" aria-live="polite"></div>
         </section>
 
@@ -105,6 +126,10 @@
                 <p class="muted">Available after an uploaded workbook loads successfully.</p>
               </div>
             </div>
+            <div class="publish-package-card">
+              <button id="downloadPublishingPackage" class="btn primary" type="button">Download v2 Publishing Package</button>
+              <p class="muted">Packages approved working-copy changes for manual GitHub publication. Review Database Health first; BAD/Error results block normal publication unless explicitly overridden.</p>
+            </div>
           </div>
           <div id="publishPanel" class="publish-panel"></div>
           <div id="buildSummary" class="build-summary" hidden></div>
@@ -125,6 +150,11 @@
           <div id="modifierList" class="modifier-list" aria-live="polite"></div>
         </section>
 
+        <section id="admin-assets" class="admin-panel" role="tabpanel" aria-labelledby="admin-tab-assets" tabindex="0" hidden>
+          <div class="section-head"><h3>Asset Manager</h3></div>
+          <div id="assetManagerRoot" class="asset-manager-root" aria-live="polite"></div>
+        </section>
+
         <section id="admin-settings" class="admin-panel" role="tabpanel" aria-labelledby="admin-tab-settings" tabindex="0" hidden>
           <div class="section-head"><h3>Settings</h3></div>
           <div class="settings-card">
@@ -143,17 +173,149 @@
       </section>
 
       <section id="manage" class="view">
-        <div class="manage-card" aria-labelledby="manageHeading">
-          <p class="eyebrow">Personaville Manager</p>
-          <h2 id="manageHeading">Coming Soon</h2>
-          <p class="muted">A polished workspace for managing the Personaville database is planned for a future release.</p>
-          <ul class="coming-soon-list">
-            <li>Edit personas</li>
-            <li>Edit speed options and pricing</li>
-            <li>Manage modifiers and disclaimers</li>
-            <li>Upload icons and images</li>
-            <li>Version history and publishing tools</li>
-          </ul>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Personaville Manager</p>
+            <h2 id="manageHeading">Manage Personas</h2>
+          </div>
+          <span id="editingStatus" class="pill ok" aria-live="polite">No unsaved changes</span>
+        </div>
+        <div class="manage-card manage-card-wide" aria-labelledby="manageHeading">
+          <p class="muted">Choose how to manage personas. Existing active records open read-only first; create an updated version when changing active published content.</p>
+          <div class="manage-actions">
+            <button id="startEditing" class="btn primary" type="button">Start Editing</button>
+            <button id="discardWorkingCopy" class="btn" type="button">Discard Working Changes</button>
+            <button id="resetWorkingCopy" class="btn" type="button">Reset from Published Database</button>
+            <button id="undoEdit" class="btn" type="button">Undo</button>
+            <button id="redoEdit" class="btn" type="button">Redo</button>
+            <button class="btn" type="button" onclick="setView('review')">Data Explorer</button>
+          </div>
+          <div id="editingStateSummary" class="kpis dashboard-overview" aria-live="polite"></div>
+          <div class="manage-workspace-grid" aria-label="Manage workspace sections">
+            <section class="manage-section persona-editor" aria-labelledby="personaEditorHeading">
+              <div class="section-head compact">
+                <div>
+                  <h3 id="personaEditorHeading">Persona Editor</h3>
+                  <p class="muted">Select a starting action. Existing personas open read-only until you choose a safe edit action.</p>
+                </div>
+                <span id="personaEditorCount" class="pill gray">0 personas</span>
+              </div>
+              <div id="personaStartPanel" class="persona-start-panel" aria-label="Persona management start actions">
+                <button id="personaCreateNew" class="btn primary" type="button">Create New Persona</button>
+                <button id="personaCreateFromExisting" class="btn" type="button">Create From Existing Persona</button>
+                <button id="personaViewExisting" class="btn" type="button">View Existing Personas</button>
+              </div>
+              <div class="persona-editor-toolbar">
+                <input id="personaEditorSearch" class="search" placeholder="Search personas by name, ID, family, pricing, or status" autocomplete="off" />
+                <button id="personaCreateUpdatedVersion" class="btn primary" type="button">Create Updated Version</button>
+                <button id="personaDuplicate" class="btn" type="button">Duplicate as New Persona</button>
+                <details id="personaMoreActions" class="more-actions"><summary class="btn">More Actions</summary><div class="more-actions-menu"><button id="personaDeactivate" class="btn" type="button">Deactivate</button><button id="personaMarkDeleted" class="btn danger" type="button">Mark Deleted</button><button id="personaEditAnyway" class="btn" type="button">Edit Active Record Anyway</button></div></details>
+              </div>
+              <div class="persona-editor-layout">
+                <div id="personaEditorList" class="persona-editor-list" aria-label="Searchable persona list"></div>
+                <form id="personaEditorForm" class="persona-editor-form" aria-label="Persona fields"></form>
+              </div>
+              <div class="persona-editor-footer">
+                <div><span id="personaEditorSaveState" class="pill ok" aria-live="polite">Saved</span></div>
+                <div id="personaEditorActions" class="persona-editor-actions"><button id="personaEditorCancel" class="btn" type="button">Cancel</button><button id="personaEditorSave" class="btn primary" type="button">Save Changes</button><button id="personaEditorSchedule" class="btn" type="button">Schedule Persona</button></div>
+              </div>
+            </section>
+            <section class="manage-section speed-option-editor" aria-labelledby="speedOptionEditorHeading">
+              <div class="section-head compact">
+                <div>
+                  <h3 id="speedOptionEditorHeading">Speed Options</h3>
+                  <p class="muted">Create, edit, duplicate, activate/deactivate, reorder, and remove speed options for the selected persona. Pricing rows are summarized but not directly editable yet.</p>
+                </div>
+                <span id="speedOptionEditorCount" class="pill gray">0 speed options</span>
+              </div>
+              <div class="persona-editor-toolbar">
+                <button id="speedOptionCreateNew" class="btn primary" type="button">New Speed Option</button>
+                <button id="speedOptionDuplicate" class="btn" type="button">Duplicate</button>
+                <button id="speedOptionActivate" class="btn" type="button">Activate</button>
+                <button id="speedOptionDeactivate" class="btn" type="button">Deactivate</button>
+                <button id="speedOptionMoveUp" class="btn" type="button">Move Up</button>
+                <button id="speedOptionMoveDown" class="btn" type="button">Move Down</button>
+                <button id="speedOptionRemove" class="btn danger" type="button">Remove</button>
+              </div>
+              <div class="persona-editor-layout">
+                <div id="speedOptionEditorList" class="persona-editor-list" aria-label="Selected persona speed options"></div>
+                <form id="speedOptionEditorForm" class="persona-editor-form" aria-label="Speed option fields"></form>
+              </div>
+              <div class="persona-editor-footer">
+                <p class="muted">ReferenceID and PersonaID + SpeedOption uniqueness are validated. ScheduleID resolution and pricing relationship warnings update with each save.</p>
+                <button id="speedOptionEditorSave" class="btn primary" type="button">Save Speed Option</button>
+              </div>
+            </section>
+            <section class="manage-section pricing-schedule-editor" aria-labelledby="pricingScheduleEditorHeading">
+              <div class="section-head compact">
+                <div>
+                  <h3 id="pricingScheduleEditorHeading">Pricing Schedule Editor</h3>
+                  <p class="muted">Create and maintain structured pricing rows without directly editing Excel. Published data is protected until you download and publish the working copy.</p>
+                </div>
+              </div>
+              <div class="persona-editor-toolbar">
+                <label class="editor-field pricing-schedule-picker" for="pricingScheduleSelect"><span>ScheduleID</span><select id="pricingScheduleSelect"></select></label>
+                <label class="editor-field pricing-schedule-picker" for="pricingStructureType"><span>Structure</span><select id="pricingStructureType"><option>Step Pricing</option><option>Flat Pricing</option><option>3 Months Free</option><option>3 Year Price Lock</option></select></label>
+                <button id="pricingScheduleCreateNew" class="btn primary" type="button">New ScheduleID</button>
+                <button id="pricingScheduleAddRow" class="btn" type="button">Add Row</button>
+              </div>
+              <div class="pricing-editor-layout">
+                <form id="pricingScheduleEditorForm" class="pricing-schedule-form" aria-label="Pricing schedule rows"></form>
+                <aside class="pricing-editor-side">
+                  <div id="pricingScheduleUsage" class="usage-card"></div>
+                  <div id="pricingSchedulePreview" class="usage-card"></div>
+                </aside>
+              </div>
+              <div class="persona-editor-footer">
+                <p class="muted">Validates overlaps, missing coverage, 36-month promotions, Intro Free structure, month labels, and blank prices. Database Health runs after save.</p>
+                <button id="pricingScheduleSave" class="btn primary" type="button">Save Pricing Schedule</button>
+              </div>
+            </section>
+            <section class="manage-section modifier-editor" aria-labelledby="modifierEditorHeading">
+              <div class="section-head compact"><div><h3 id="modifierEditorHeading">Modifier Editor</h3><p class="muted">Create, edit, activate/deactivate, and inspect modifier usage.</p></div><span id="modifierEditorCount" class="pill gray">0 modifiers</span></div>
+              <div class="persona-editor-toolbar"><button id="modifierCreateNew" class="btn primary" type="button">New Modifier</button><button id="modifierActivate" class="btn" type="button">Activate</button><button id="modifierDeactivate" class="btn" type="button">Deactivate</button></div>
+              <div class="persona-editor-layout"><div id="modifierEditorList" class="persona-editor-list"></div><form id="modifierEditorForm" class="persona-editor-form"></form></div>
+              <div class="persona-editor-footer"><p class="muted">Shows every persona using the selected modifier. Database Health runs after save.</p><button id="modifierEditorSave" class="btn primary" type="button">Save Modifier</button></div>
+            </section>
+            <section class="manage-section persona-modifier-editor" aria-labelledby="personaModifierEditorHeading">
+              <div class="section-head compact"><div><h3 id="personaModifierEditorHeading">Persona Modifier Relationships</h3><p class="muted">Add, remove, reorder, and validate modifier relationships for the selected persona.</p></div></div>
+              <div class="persona-editor-toolbar"><label class="editor-field"><span>Add Modifier</span><select id="personaModifierAddSelect"></select></label><button id="personaModifierAdd" class="btn primary" type="button">Add to Persona</button></div>
+              <div id="personaModifierWarnings" class="usage-card"></div><div id="personaModifierList" class="persona-editor-list relationship-list"></div>
+            </section>
+            <section class="manage-section disclaimer-editor" aria-labelledby="disclaimerEditorHeading">
+              <div class="section-head compact"><div><h3 id="disclaimerEditorHeading">Disclaimer Editor</h3><p class="muted">Edit exact legal copy, preview formatting, inspect linked personas, and duplicate existing disclaimers.</p></div><span id="disclaimerEditorCount" class="pill gray">0 disclaimers</span></div>
+              <div class="persona-editor-toolbar"><button id="disclaimerDuplicate" class="btn" type="button">Duplicate Selected</button></div>
+              <div class="persona-editor-layout"><div id="disclaimerEditorList" class="persona-editor-list"></div><form id="disclaimerEditorForm" class="persona-editor-form"></form></div>
+              <div class="pricing-editor-layout"><div id="disclaimerPreview" class="usage-card disclaimer-preview"></div><div id="disclaimerUsage" class="usage-card"></div></div>
+              <div class="persona-editor-footer"><p class="muted">Legal copy is preserved exactly as typed; no automatic rewriting is performed.</p><button id="disclaimerEditorSave" class="btn primary" type="button">Save Disclaimer</button></div>
+            </section>
+            <section class="manage-section"><h3>Assets</h3><p class="muted">Editing controls will be added here.</p></section>
+          </div>
+        </div>
+      </section>
+
+      <section id="review" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Uncommitted working copy</p>
+            <h2 id="reviewHeading">Data Explorer</h2>
+          </div>
+          <span id="reviewChangeCount" class="pill gray" aria-live="polite" role="status">0 changes</span>
+        </div>
+        <div class="manage-card manage-card-wide" aria-labelledby="reviewHeading">
+          <p class="muted">Review working-copy changes and database records before export. Published data is preserved until you explicitly download and publish the exported JSON.</p>
+          <div id="reviewSummary" class="kpis dashboard-overview" aria-live="polite"></div>
+          <div class="persona-editor-toolbar health-export-actions">
+            <button id="reviewExportHealthReport" class="btn" type="button">Export Health Report</button>
+            <button id="reviewExportHealthWarnings" class="btn" type="button">Export Warnings Only</button>
+            <button id="reviewExportHealthErrors" class="btn" type="button">Export Errors Only</button>
+            <button id="reviewDownloadHealthLog" class="btn" type="button">Download Health Log</button>
+            <span id="reviewHealthExportStatus" class="muted" aria-live="polite"></span>
+          </div>
+          <div class="persona-editor-toolbar">
+            <label class="editor-field" for="changeTypeFilter"><span>Filter by record type</span><select id="changeTypeFilter"><option value="all">All record types</option></select></label>
+          </div>
+          <div id="changeList" class="change-list" aria-live="polite"></div>
         </div>
       </section>
 
@@ -196,6 +358,7 @@
 
   <script src="js/database.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/asset-manager.js"></script>
   <script src="js/header.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -23,13 +23,17 @@ Personaville v1 is now focused on stabilization: the static app loads the publis
 - Prefer documentation and validation improvements over new UI scope during v1 maintenance.
 - Do not remove code unless it is clearly unused and current behavior is covered.
 
+## v2 release-candidate gate
+
+Before v2 can replace any production experience, release-candidate testing must prove that the current production v1 database imports without data loss, record counts match, representative pricing schedules match, modifiers and disclaimers match, all asset paths resolve, Database Health has no blocking rows, read-only browsing works, all editors work, undo/redo works, publishing package generation works, Export Cart printing works, and desktop/tablet/mobile layouts are acceptable. Rollback remains the stable v1 site until an explicit promotion task replaces it.
+
 ## v2 roadmap
 
 The following items are intentionally deferred from v1 to v2:
 
-1. **Future editing workspace**
-   - Edit personas, speed options, pricing schedules, modifiers, and disclaimers in the app.
-   - Add form validation and save flows.
+1. **Editing workspace hardening**
+   - Continue RC testing for personas, speed options, pricing schedules, modifiers, relationships, disclaimers, and assets.
+   - Keep form validation, change review, and undo/redo covered by automated and manual release checks.
 
 2. **Asset management**
    - Upload, preview, replace, and audit icons/images from the app.

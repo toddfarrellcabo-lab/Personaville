@@ -1,10 +1,33 @@
-# Personaville v1.0
+# Personaville v2 Preview
 
-Personaville is a stable, static, workbook-driven offer database for reviewing market personas, checking database health, and exporting selected persona summaries. It runs directly from GitHub Pages or any static web server with no backend service.
+Personaville v2 Preview is the repository-based development preview for the next Personaville release. It starts from the current stable Personaville v1.0/v1.1 application baseline and intentionally preserves the existing static, workbook-driven behavior while v2 work is staged separately from the stable v1 repository.
+
+Preview site URL structure after GitHub Pages is enabled:
+
+```text
+https://tf-1031.github.io/Personaville-v2-preview/
+```
+
+Stable v1 site: https://tf-1031.github.io/Personaville-test/
+
+## Repository purpose
+
+- This repository is the v2 development preview only.
+- The stable v1 `Personaville-test` repository and site should remain unchanged.
+- Existing v1 functionality is retained here as the starting point: database import, validation, Personas, Export Cart, Admin, hero image, audio player, and publishing workflow.
+- v2 editing, undo/redo, change review, and publishing-package workflows are staged for release-candidate validation in this preview setup.
+- If this repository was created by cloning the stable v1 repository, it can preserve the full Git history. If it was created from an exported file copy instead, this preview begins from the v1.0/v1.1 baseline represented by this initial commit.
+
+
+## v2 release-candidate preparation
+
+Personaville v2 is now staged for release-candidate testing in this preview repository only. The stable v1 site must remain unchanged during RC validation. See [MIGRATION.md](MIGRATION.md) for the production v1 import procedure, data-loss checks, RC validation checklist, and rollback-to-v1 plan. See [RELEASE_NOTES_v2_RC.md](RELEASE_NOTES_v2_RC.md) for the current release-notes draft.
+
+RC validation must include record-count comparison, representative pricing schedule comparison, modifier/disclaimer comparison, asset-path validation, full Database Health, read-only browsing, all editors, undo/redo, publishing package generation, Export Cart printing, and desktop/tablet/mobile review.
 
 ## Quick start
 
-1. Open `index.html` from the published site, or preview locally with `python3 -m http.server 8000` and visit `http://localhost:8000/`.
+1. Open `index.html` from the published preview site, or preview locally with `python3 -m http.server 8000` and visit `http://localhost:8000/`.
 2. Personaville automatically loads `database/persona-db.json`.
 3. Use **Personas** to search/filter personas and add them to the **Export Cart**.
 4. Use **Admin → Database Health** before publishing data updates.
@@ -12,11 +35,25 @@ Personaville is a stable, static, workbook-driven offer database for reviewing m
 
 > If `file://` blocks JSON loading during local preview, run a local static server instead of opening `index.html` directly.
 
+## GitHub Pages setup
+
+Configure GitHub Pages in the new `Personaville-v2-preview` repository:
+
+1. Create the repository as `tf-1031/Personaville-v2-preview`.
+2. Push this preview branch/repository content to GitHub.
+3. In GitHub, open **Settings → Pages**.
+4. Set **Source** to **Deploy from a branch**.
+5. Select the default publishing branch, usually `main`, and the root folder `/`.
+6. Save and wait for GitHub Pages to publish.
+7. Confirm the site is available at `https://tf-1031.github.io/Personaville-v2-preview/`.
+
+No custom domain is required for this preview URL.
+
 ## Primary navigation
 
 - **Personas** — the default view. Search by persona, speed, modifier, or Reference ID; filter by Pricing Set and Family Group; open persona details; and add matching personas to the Export Cart.
 - **Export Cart** — shows selected personas, a single-persona preview fallback, print/PDF actions, and copy-summary behavior.
-- **Manage** — a v1 placeholder that intentionally does not edit data. Editing, asset management, direct database editing, email export, and version history are v2 scope.
+- **Manage** — a placeholder that intentionally does not edit data. Editing, asset management, direct database editing, email export, and version history remain future v2 scope.
 - **Admin** — operational tools for overview metrics, Database Health, publishing, modifiers, and settings.
 
 ## Hero and mini-player behavior
@@ -49,6 +86,10 @@ When no personas are selected, Export Cart displays an empty state and keeps a s
 - **Modifiers** — active modifier records and their resolved icons.
 - **Settings** — repository folder expectations and maintainer notes.
 
+## Secure authenticated publishing design
+
+Authenticated direct publishing is intentionally not implemented in the static Personaville app. The default publishing method remains the downloadable manual publishing package because it does not require storing GitHub credentials in repository files, browser storage, or public JavaScript. See [Secure GitHub Publishing Design for Personaville v2](docs/secure-github-publishing.md) for the evaluated GitHub App, OAuth, server-side publishing service, and GitHub Actions workflow dispatch options.
+
 ## Upload Workbook and JSON publishing workflow
 
 Use this workflow after editing `database/persona-db.xlsx`.
@@ -71,7 +112,7 @@ Treat **BAD**, **ERROR**, and **FAIL** rows as release blockers unless a maintai
 ## Folder structure
 
 ```text
-Personaville/
+Personaville-v2-preview/
 ├── index.html
 ├── README.md
 ├── ROADMAP.md
@@ -111,7 +152,7 @@ Personaville/
 
 ## Audio files
 
-The v1 audio player supports the bundled MP3 only. Replace `audio/8bit-Personaville-loop.mp3` with another compatible MP3 only if the filename and path stay the same or `components/header.html` is updated in the same release.
+The preview audio player supports the bundled MP3 only. Replace `audio/8bit-Personaville-loop.mp3` with another compatible MP3 only if the filename and path stay the same or `components/header.html` is updated in the same release.
 
 ## Print and export behavior
 
@@ -120,11 +161,11 @@ The v1 audio player supports the bundled MP3 only. Replace `audio/8bit-Personavi
 - Printable persona cards are sized for Letter portrait pages.
 - `beforeprint` scales oversized cards to fit the printable card area; `afterprint` resets scaling.
 - **Print All** and **Download / Save as PDF** intentionally call the same browser print workflow.
-- Email export is not part of v1.
+- Email export is not implemented in this baseline preview task.
 
 ## Manage Coming Soon scope
 
-The **Manage** page is informational in v1. It does not save edits or write to the workbook/JSON. The following are v2 items: persona editing, speed/pricing editing, modifier/disclaimer editing, asset upload/management, direct database editing, email export, and version history.
+The **Manage** page is informational in this baseline preview. It does not save edits or write to the workbook/JSON. The following remain future v2 items: persona editing, speed/pricing editing, modifier/disclaimer editing, asset upload/management, direct database editing, email export, and version history.
 
 ## Developer guide
 
@@ -154,24 +195,16 @@ database/persona-db.json --fetch on load--------> same runtime DB state
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
 | Published database does not load locally | Browser blocked `fetch()` from `file://` | Run `python3 -m http.server 8000` and open `http://localhost:8000/`. |
-| Upload Workbook says SheetJS did not load | CDN unavailable or blocked | Connect to the internet, retry, or load the bundled JSON. |
-| Icons show fallback text | Workbook icon filename is missing or asset path is wrong | Confirm the file exists under `assets/icons/` and rerun health checks. |
-| Audio unavailable | MP3 path missing or browser could not play the file | Confirm `audio/8bit-Personaville-loop.mp3` exists and is served with an audio MIME type. |
-| Export Cart is empty | No personas selected | Add personas from tile checkboxes or use Select All Visible after filtering. |
-| Print includes unexpected browser headers/footers | Browser print settings | Disable headers/footers in the print dialog when producing PDFs. |
-| JSON download disabled | No workbook has been uploaded in this browser session | Use Upload Workbook first. |
+| Hero image is missing | `assets/images/personaville-header.png` path changed or file missing | Restore the file or update `components/header.html`. |
+| Audio does not play | Browser autoplay policy or missing MP3 | Press **Play** after user interaction and confirm `audio/8bit-Personaville-loop.mp3` exists. |
+| Updated workbook changes are not reflected | JSON was not regenerated/replaced | Use **Admin → Publish Database → Download Updated JSON** and replace `database/persona-db.json`. |
 
-## Release process
+## Date-based persona lifecycle scheduling
 
-1. Start from the latest `main` branch when a remote is configured.
-2. Create a focused release branch.
-3. Make documentation, data, or cleanup changes only; avoid new features for v1 stabilization.
-4. Run checks:
-   - `node tests/download-updated-json.test.js`
-   - `node --check js/app.js && node --check js/database.js && node --check js/header.js && node --check js/render.js`
-   - `python3 -m json.tool database/persona-db.json > /tmp/persona-db.json.validated`
-   - icon/asset existence checks
-   - browser smoke tests for navigation, selection/cart, print, mobile viewport, and console errors
-5. Commit changes.
-6. Open a PR titled `Finalize Personaville v1 documentation and cleanup`.
-7. Merge after review and confirm the published GitHub Pages site loads the expected JSON.
+Personas may include `EffectiveStartDate`, `EffectiveEndDate`, `SupersedesPersonaID`, and `LifecycleStatusOverride` in `05_Personas`. Dates are browser-local calendar dates stored as `YYYY-MM-DD`; there are no times, cron jobs, server schedulers, GitHub automations, or timezone selectors. Blank end dates mean the persona remains effective indefinitely until ended, manually deactivated, or superseded.
+
+Scheduled records must be published before their start date by replacing `database/persona-db.json` through the normal publishing workflow. GitHub Pages only serves the already-published static JSON; it does not activate records, run schedulers, or recalculate data on the server. Each browser derives status from its own local calendar date when the app loads, so users may need to refresh after midnight to see a scheduled record become active or an ended record expire. Users near midnight in different locations can briefly see different derived statuses because their browser-local dates differ. Exact coordinated go-live times require a future backend or service-side scheduler and are intentionally out of scope for this static app.
+
+Legacy active records with no lifecycle dates remain active, and older JSON/workbooks continue to load without inventing dates. Workbook exports and publishing packages include lifecycle columns when present in the persona rows. Database Health and health exports include lifecycle findings for invalid date ranges, missing superseded targets, self-superseding records, circular replacement chains, overlapping effective ranges, and multiple open-ended active versions.
+
+Use **Create Updated Version** to replace an existing persona. The editor duplicates the source as a new draft, generates a new `PersonaID`, sets `SupersedesPersonaID`, asks for the replacement start date, previews the new draft plus the suggested source end date (one day earlier), and requires confirmation before changing the source. The editor shows the derived lifecycle status as read-only explanatory text and warns about lifecycle conflicts before save; resolve critical lifecycle health failures before marking a release ready.
