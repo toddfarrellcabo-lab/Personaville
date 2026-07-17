@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Personaville v2 Preview</title>
+  <title>Personaville v2 Preview — Database Manager</title>
   <link rel="stylesheet" href="css/app.css" />
   <link rel="stylesheet" href="css/header.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -19,7 +19,7 @@
       <button class="nav active" data-view="personas" type="button" aria-current="page">View Personas</button>
       <button class="nav" data-view="review" type="button">Data Explorer</button>
       <button class="nav" data-view="export" type="button">Export Cart</button>
-      <button class="nav" data-view="manage" type="button">Manage Personas</button>
+      <button class="nav" data-view="manage" type="button">Database</button>
       <button class="nav" data-view="admin" type="button">Admin</button>
     </nav>
 
@@ -66,6 +66,15 @@
             <div class="results-head">
               <h3 id="personaResultsHeading">Results</h3>
               <span id="personaResultCount" class="pill gray" aria-live="polite">0 personas found</span>
+            </div>
+            <div class="bulk-selection-toolbar" aria-label="Bulk Export Cart actions">
+              <button id="selectAllPersonas" class="btn small" type="button">Select All</button>
+              <button id="deselectAllPersonas" class="btn small" type="button">Deselect All</button>
+              <button id="selectVisiblePersonas" class="btn small" type="button">Select Visible</button>
+              <button id="deselectVisiblePersonas" class="btn small" type="button">Deselect Visible</button>
+              <span id="personaSelectionCount" class="bulk-selection-count" aria-live="polite">0 selected</span>
+              <button id="viewExportCart" class="btn small" type="button">View Cart</button>
+              <button id="clearPersonaCart" class="btn small" type="button">Clear Cart</button>
             </div>
             <div id="personaTiles" class="tiles persona-grid" aria-live="polite"></div>
           </section>
@@ -175,13 +184,13 @@
       <section id="manage" class="view">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Personaville Manager</p>
-            <h2 id="manageHeading">Manage Personas</h2>
+            <p class="eyebrow">Personaville database</p>
+            <h2 id="manageHeading">Database Manager</h2>
           </div>
           <span id="editingStatus" class="pill ok" aria-live="polite">No unsaved changes</span>
         </div>
         <div class="manage-card manage-card-wide" aria-labelledby="manageHeading">
-          <p class="muted">Choose how to manage personas. Existing active records open read-only first; create an updated version when changing active published content.</p>
+          <p class="muted">Manage Personaville database records and supporting workflows. Existing active persona records open read-only first; create an updated version when changing active published content.</p>
           <div class="manage-actions">
             <button id="startEditing" class="btn primary" type="button">Start Editing</button>
             <button id="discardWorkingCopy" class="btn" type="button">Discard Working Changes</button>
@@ -191,7 +200,29 @@
             <button class="btn" type="button" onclick="setView('review')">Data Explorer</button>
           </div>
           <div id="editingStateSummary" class="kpis dashboard-overview" aria-live="polite"></div>
-          <div class="manage-workspace-grid" aria-label="Manage workspace sections">
+            <section class="manage-section workbook-export" aria-labelledby="workbookExportHeading">
+              <div class="section-head compact"><div><h3 id="workbookExportHeading">Database Files</h3><p class="muted">Download a structured Excel workbook for manual review, backup, editing, and later import through Database Manager.</p></div></div>
+              <div class="publish-action-grid">
+                <div class="publish-action-card">
+                  <button id="exportPublishedWorkbook" class="btn" type="button">Export Published Workbook</button>
+                  <p class="muted">Exports only the canonical published snapshot. Uncommitted working-copy edits are not included.</p>
+                </div>
+                <div class="publish-action-card">
+                  <button id="exportWorkingWorkbook" class="btn primary" type="button">Export Working Copy Workbook</button>
+                  <p class="muted">Exports the current working copy, including genuine staged edits. Working-copy exports are marked unpublished.</p>
+                </div>
+                <div class="publish-action-card workbook-import-card">
+                  <label class="btn primary" title="Import an edited Personaville Excel workbook into the working copy.">
+                    Import Workbook
+                    <input id="workbookImport" type="file" accept=".xlsx" hidden aria-label="Import workbook into the working copy">
+                  </label>
+                  <p class="muted">Upload a Personaville .xlsx workbook. Changes will be validated and loaded into the working copy for review. Published data will not be changed.</p>
+                </div>
+              </div>
+              <div id="workbookImportPanel" class="workbook-import-panel" aria-live="polite"></div>
+              <p id="workbookExportStatus" class="muted" aria-live="polite"></p>
+            </section>
+          <div class="manage-workspace-grid" aria-label="Database Manager workspace sections">
             <section class="manage-section persona-editor" aria-labelledby="personaEditorHeading">
               <div class="section-head compact">
                 <div>
@@ -200,10 +231,10 @@
                 </div>
                 <span id="personaEditorCount" class="pill gray">0 personas</span>
               </div>
-              <div id="personaStartPanel" class="persona-start-panel" aria-label="Persona management start actions">
+              <div id="personaStartPanel" class="persona-start-panel" aria-label="Persona Editor start actions">
                 <button id="personaCreateNew" class="btn primary" type="button">Create New Persona</button>
                 <button id="personaCreateFromExisting" class="btn" type="button">Create From Existing Persona</button>
-                <button id="personaViewExisting" class="btn" type="button">View Existing Personas</button>
+                <button id="personaViewExisting" class="btn" type="button">View Personas</button>
               </div>
               <div class="persona-editor-toolbar">
                 <input id="personaEditorSearch" class="search" placeholder="Search personas by name, ID, family, pricing, or status" autocomplete="off" />
@@ -289,7 +320,7 @@
               <div class="pricing-editor-layout"><div id="disclaimerPreview" class="usage-card disclaimer-preview"></div><div id="disclaimerUsage" class="usage-card"></div></div>
               <div class="persona-editor-footer"><p class="muted">Legal copy is preserved exactly as typed; no automatic rewriting is performed.</p><button id="disclaimerEditorSave" class="btn primary" type="button">Save Disclaimer</button></div>
             </section>
-            <section class="manage-section"><h3>Assets</h3><p class="muted">Editing controls will be added here.</p></section>
+            <section class="manage-section"><h3>Assets</h3><p class="muted">Asset management lives in Admin today and is ready to be linked into Database Manager as the workspace expands.</p></section>
           </div>
         </div>
       </section>
@@ -338,7 +369,7 @@
           </div>
           <ol id="exportCartList" class="export-cart-list" aria-label="Selected personas"></ol>
           <div class="export-actions">
-            <button id="selectAllVisible" class="btn" type="button">Select All Visible</button>
+            <button id="selectAllVisible" class="btn" type="button">Select Visible</button>
             <button id="clearExportSelection" class="btn" type="button">Clear Cart</button>
             <button id="printPersona" class="btn primary" type="button">Print / Save Combined PDF</button>
             <button id="savePdf" class="btn" type="button">Download PDF</button>

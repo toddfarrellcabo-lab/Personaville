@@ -30,7 +30,7 @@ RC validation must include record-count comparison, representative pricing sched
 1. Open `index.html` from the published preview site, or preview locally with `python3 -m http.server 8000` and visit `http://localhost:8000/`.
 2. Personaville automatically loads `database/persona-db.json`.
 3. Use **Personas** to search/filter personas and add them to the **Export Cart**.
-4. Use **Admin → Database Health** before publishing data updates.
+4. Use **Database** for Database Manager editing workflows, and use **Admin → Database Health** before publishing data updates.
 5. Use **Admin → Publish Database** to upload an edited workbook and download a replacement JSON file.
 
 > If `file://` blocks JSON loading during local preview, run a local static server instead of opening `index.html` directly.
@@ -51,17 +51,18 @@ No custom domain is required for this preview URL.
 
 ## Primary navigation
 
-- **Personas** — the default view. Search by persona, speed, modifier, or Reference ID; filter by Pricing Set and Family Group; open persona details; and add matching personas to the Export Cart.
+- **View Personas** — the default view. Search by persona, speed, modifier, or Reference ID; filter by Pricing Set and Family Group; open persona details; and add matching personas to the Export Cart.
+- **Data Explorer** — reviews working-copy changes and database records before export.
 - **Export Cart** — shows selected personas, a single-persona preview fallback, print/PDF actions, and copy-summary behavior.
-- **Manage** — a placeholder that intentionally does not edit data. Editing, asset management, direct database editing, email export, and version history remain future v2 scope.
-- **Admin** — operational tools for overview metrics, Database Health, publishing, modifiers, and settings.
+- **Database** — compact navigation label for **Database Manager**, the broader workspace for Persona Editor, View Personas, Export Cart, Data Explorer, workbook import/export, Database Health, Assets, Disclaimers, Modifiers, Publishing, and future Version History links.
+- **Admin** — operational tools for overview metrics, Database Health, publishing, modifiers, assets, and settings.
 
 ## Hero and mini-player behavior
 
 The shared header is loaded once from `components/header.html` into `#personaville-header-container`.
 
 - On **Personas**, the header uses the full hero image from `assets/images/personaville-header.png`.
-- On **Export Cart**, **Manage**, and **Admin**, the same header switches to compact mini-player mode.
+- On **Data Explorer**, **Export Cart**, **Database**, and **Admin**, the same header switches to compact mini-player mode.
 - The audio element remains mounted across in-app navigation, so music continues until the user presses **Stop**.
 - The Play/Stop button controls `audio/8bit-Personaville-loop.mp3`, updates `aria-pressed`, and exposes a polite status label.
 - Missing hero or audio assets degrade gracefully and log warnings instead of blocking the application.
@@ -70,11 +71,12 @@ The shared header is loaded once from `components/header.html` into `#personavil
 
 1. Go to **Personas**.
 2. Apply at least one search or filter to display persona tiles.
-3. Check **Add to Export Cart** on individual tiles, or use **Select All Visible** from Export Cart for the current filtered result set.
-4. The sticky Export Cart tray appears when one or more personas are selected.
-5. Open **Export Cart** to review order and remove unwanted personas.
-6. Use **Print All** or **Download / Save as PDF**. Both open the browser print dialog; choose a PDF destination when supported.
-7. Use **Copy Summary** to copy selected persona names for quick sharing.
+3. Check **Add to Export Cart** on individual tiles, or use the compact bulk-selection toolbar on **Personas** to **Select All**, **Deselect All**, **Select Visible**, or **Deselect Visible**. Visible-only actions follow the current search, lifecycle, Pricing Set, Family Group, and other View Personas filters.
+4. Use the toolbar count, **View Cart**, and **Clear Cart** controls to monitor or reset the shared Export Cart without leaving the filtered results.
+5. The sticky Export Cart tray appears when one or more personas are selected.
+6. Open **Export Cart** to review order and remove unwanted personas.
+7. Use **Print All** or **Download / Save as PDF**. Both open the browser print dialog; choose a PDF destination when supported.
+8. Use **Copy Summary** to copy selected persona names for quick sharing.
 
 When no personas are selected, Export Cart displays an empty state and keeps a single-persona preview available once data is loaded.
 
@@ -90,18 +92,20 @@ When no personas are selected, Export Cart displays an empty state and keeps a s
 
 Authenticated direct publishing is intentionally not implemented in the static Personaville app. The default publishing method remains the downloadable manual publishing package because it does not require storing GitHub credentials in repository files, browser storage, or public JavaScript. See [Secure GitHub Publishing Design for Personaville v2](docs/secure-github-publishing.md) for the evaluated GitHub App, OAuth, server-side publishing service, and GitHub Actions workflow dispatch options.
 
-## Upload Workbook and JSON publishing workflow
+## Workbook export, import, review, and publishing workflow
 
-Use this workflow after editing `database/persona-db.xlsx`.
+Use this workflow when a Personaville workbook is exported, edited in Excel, and brought back for review.
 
-1. Open **Admin → Publish Database**.
-2. Click **Upload Workbook** and choose the edited `.xlsx`/`.xls` workbook.
-3. The workbook is parsed in-browser with SheetJS; no file is uploaded to a server.
-4. Review build metrics and **Admin → Database Health**.
-5. Click **Download Updated JSON**.
-6. Replace `database/persona-db.json` in the repository with the downloaded file.
-7. Commit the workbook and generated JSON together when the workbook changed.
-8. Open a focused pull request and allow GitHub Pages to publish after merge.
+1. In **Database Manager → Database Files**, use **Export Published Workbook** for a clean published snapshot or **Export Working Copy Workbook** to back up staged edits.
+2. Edit the exported `.xlsx` in Excel, but preserve every worksheet name and column header exactly. Personaville imports by canonical sheet and header names and will not guess renamed tabs or columns.
+3. Use **Import Workbook** in **Database Manager → Database Files** to select the edited Personaville `.xlsx`. Unsupported file types are rejected before parsing.
+4. Review the import stages, validation errors, and per-collection summary before applying. Fix validation errors in Excel and re-import when needed.
+5. If a dirty working copy already exists, choose **Cancel Import**, **Export Current Working Copy**, or explicitly **Replace Working Copy**. Merge is intentionally not offered for this release.
+6. Before replacement, Personaville keeps a pre-import recovery snapshot. Use **Restore Pre-Import State** / **Undo Workbook Import** from the import panel if the imported working copy is not what you expected.
+7. After applying, Database Health reruns and **Data Explorer / Review Changes** shows field-level differences. Publishing remains a separate explicit operation.
+8. To publish approved changes, review Database Health, create/download the publishing package or updated JSON, replace repository files, and commit through GitHub. Imported workbooks never directly change the published snapshot.
+
+Legacy **Admin → Publish Database → Upload Workbook** remains available for older JSON-generation workflows, but round-trip workbook editing should use Database Manager so changes are validated, summarized, recoverable, and persisted in the working copy before publishing.
 
 ## Database Health
 
@@ -163,9 +167,9 @@ The preview audio player supports the bundled MP3 only. Replace `audio/8bit-Pers
 - **Print All** and **Download / Save as PDF** intentionally call the same browser print workflow.
 - Email export is not implemented in this baseline preview task.
 
-## Manage Coming Soon scope
+## Database Manager scope
 
-The **Manage** page is informational in this baseline preview. It does not save edits or write to the workbook/JSON. The following remain future v2 items: persona editing, speed/pricing editing, modifier/disclaimer editing, asset upload/management, direct database editing, email export, and version history.
+The **Database Manager** page is the broader workspace for maintaining the Personaville database, not only persona records. The compact primary-navigation label is **Database**. Current tools include the Persona Editor, speed options, pricing schedule, modifier, relationship, disclaimer, and asset placeholders, with links ready to connect View Personas, Export Cart, Data Explorer, workbook import/export, Database Health, Assets, Publishing, and future Version History workflows. Existing internal `manage` view links remain supported for bookmark compatibility.
 
 ## Developer guide
 
