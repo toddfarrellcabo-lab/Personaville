@@ -701,6 +701,7 @@ function publishingInstructions(){
 const WORKBOOK_INSTRUCTION_SHEET = "README";
 const WORKBOOK_METADATA_SHEET = "Metadata";
 const WORKBOOK_HEALTH_SUMMARY_SHEET = "Database Health summary";
+const WORKBOOK_GENERATED_SHEETS = new Set([WORKBOOK_INSTRUCTION_SHEET, WORKBOOK_METADATA_SHEET, WORKBOOK_HEALTH_SUMMARY_SHEET, WORKBOOK_HEALTH_SUMMARY_SHEET.slice(0, 31)]);
 const WORKBOOK_SHEET_ORDER = [
   SHEET_MAP.summary,
   SHEET_MAP.settings,
@@ -814,7 +815,7 @@ function databaseWorkbookBytes(source="working", options={}){
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheetFromRows(WORKBOOK_INSTRUCTION_SHEET, workbookInstructionsRows(source)), WORKBOOK_INSTRUCTION_SHEET);
   XLSX.utils.book_append_sheet(workbook, worksheetFromRows(WORKBOOK_METADATA_SHEET, workbookMetadataRows(source, raw, healthRows, options.date || new Date(), Boolean(options.confirmedHealthErrors))), WORKBOOK_METADATA_SHEET);
-  const sheets = [...WORKBOOK_SHEET_ORDER, ...Object.keys(raw || {}).filter(name => !WORKBOOK_SHEET_ORDER.includes(name)).sort()];
+  const sheets = [...WORKBOOK_SHEET_ORDER, ...Object.keys(raw || {}).filter(name => !WORKBOOK_SHEET_ORDER.includes(name) && !WORKBOOK_GENERATED_SHEETS.has(name)).sort()];
   sheets.forEach(sheetName => {
     const rows = Array.isArray(raw[sheetName]) ? raw[sheetName].map(row => canonicalizeRowForComparison(row)) : [];
     XLSX.utils.book_append_sheet(workbook, worksheetFromRows(sheetName, rows), sheetName.slice(0, 31));
