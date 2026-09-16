@@ -130,7 +130,7 @@ function applyScheduledWorkbookImportFromPanel(){
     const result = mergePreparedWorkbookAsScheduled({effectiveDate, replaceWorkingCopy:true});
     renderAll();
     setView("review");
-    alert(`Scheduled import added ${result.scheduledPersonaCount} persona version(s) effective ${result.effectiveDate}. Current personas were preserved. Review Database Health and Data Explorer before publishing.`);
+    alert(`Scheduled import complete.\n\n${result.scheduledPersonaCount} Scheduled persona version(s) added\n${result.scheduledRetirementCount || 0} Current persona retirement date(s) scheduled\n0 Current personas deleted\n\nEffective ${result.effectiveDate}. Review Database Health and Data Explorer before publishing.`);
   }catch(err){ alert(err.message); }
 }
 

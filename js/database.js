@@ -876,6 +876,16 @@ function uniqueScheduledID(base, used, tag){
   used.add(candidate);
   return candidate;
 }
+
+function dayBeforeISODate(value){
+  const normalized = normalizeDateCell(value);
+  if(!normalized) return "";
+  const d = new Date(`${normalized}T12:00:00Z`);
+  if(Number.isNaN(d.getTime())) return "";
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0,10);
+}
+
 function mergePreparedWorkbookAsScheduled(options={}){
   if(WorkbookImportSession.status !== "ready" || !WorkbookImportSession.importedRaw) throw new Error("No validated workbook import is ready to apply.");
   if(workbookImportRequiresDirtyDecision() && options.replaceWorkingCopy !== true) throw new Error("The working copy has unsaved changes. Export it, cancel import, or explicitly continue.");
@@ -894,6 +904,17 @@ function mergePreparedWorkbookAsScheduled(options={}){
   inPersonas.forEach(row => {
     const oldID = String(row.PersonaID || "").trim();
     const currentMatch = curPersonas.find(p => String(p.PersonaID||"").trim() === oldID);
+    const scheduledStart = normalizeDateCell(row.EffectiveStartDate) || effectiveDate;
+    if(currentMatch){
+      const retirementDate = dayBeforeISODate(scheduledStart);
+      if(retirementDate){
+        const existingEnd = normalizeDateCell(currentMatch.EffectiveEndDate);
+        // Never extend a record that already ends earlier.
+        if(!existingEnd || existingEnd >= scheduledStart) currentMatch.EffectiveEndDate = retirementDate;
+        currentMatch.ModifiedDate = new Date().toISOString();
+        currentMatch.ModifiedBy = currentMatch.ModifiedBy || "Scheduled Workbook Import";
+      }
+    }
     const newID = currentMatch ? nextScheduledPersonaID(usedPersonaIDs) : (oldID && !usedPersonaIDs.has(oldID) ? oldID : nextScheduledPersonaID(usedPersonaIDs));
     usedPersonaIDs.add(newID);
     personaMap.set(oldID, newID);
@@ -901,7 +922,7 @@ function mergePreparedWorkbookAsScheduled(options={}){
       ...row,
       PersonaID:newID,
       SupersedesPersonaID: currentMatch ? oldID : (row.SupersedesPersonaID || ""),
-      EffectiveStartDate: normalizeDateCell(row.EffectiveStartDate) || effectiveDate,
+      EffectiveStartDate: scheduledStart,
       EffectiveEndDate: normalizeDateCell(row.EffectiveEndDate),
       LifecycleStatusOverride:"Scheduled",
       ModifiedDate:new Date().toISOString(),
@@ -984,6 +1005,10 @@ function mergePreparedWorkbookAsScheduled(options={}){
   WorkbookImportSession.importMode = "scheduled";
   WorkbookImportSession.effectiveDate = effectiveDate;
   WorkbookImportSession.scheduledPersonaCount = personaMap.size;
+  WorkbookImportSession.scheduledRetirementCount = inPersonas.filter(r => {
+    const id = String(r.PersonaID || "").trim();
+    return (current[SHEET_MAP.personas] || []).some(p => String(p.PersonaID || "").trim() === id);
+  }).length;
   updateWorkingCopy(merged, "scheduled-workbook-import", {filename:WorkbookImportSession.filename, effectiveDate, scheduledPersonaCount:personaMap.size, recoveryLabel:"Pre-scheduled-import state"});
   EditingSession.lastSavedSnapshotRaw = cloneDatabasePayload(EditingSession.workingRaw);
   persistEditingSession();
@@ -991,7 +1016,7 @@ function mergePreparedWorkbookAsScheduled(options={}){
   refreshEditingRecordStates();
   WorkbookImportSession.applied = true;
   WorkbookImportSession.status = "applied";
-  return {scheduledPersonaCount:personaMap.size, changes:editingChangeList(), health:buildHealth(), effectiveDate};
+  return {scheduledPersonaCount:personaMap.size, scheduledRetirementCount:WorkbookImportSession.scheduledRetirementCount || 0, changes:editingChangeList(), health:buildHealth(), effectiveDate};
 }
 
 function applyPreparedWorkbookImport(options={}){ if(WorkbookImportSession.status !== "ready" || !WorkbookImportSession.importedRaw) throw new Error("No validated workbook import is ready to apply."); if(workbookImportRequiresDirtyDecision() && options.replaceWorkingCopy !== true) throw new Error("The working copy has unsaved changes. Export it, cancel import, or explicitly replace it."); const removed = Object.values(WorkbookImportSession.summary || {}).reduce((n,s)=>n+(s.removed||0),0); if(removed && options.confirmDeletions !== true) throw new Error("This workbook proposes deletions. Review the deletion counts and confirm before applying."); const before = cloneDatabasePayload(activeDatabaseSnapshot()); WorkbookImportSession.recoveryRaw = before; updateWorkingCopy(WorkbookImportSession.importedRaw, "workbook-import", {filename:WorkbookImportSession.filename, recoveryLabel:"Pre-import state"}); EditingSession.lastSavedSnapshotRaw = cloneDatabasePayload(EditingSession.workingRaw); persistEditingSession(); DB.sourceWorkbookFile = null; DB.sourceWorkbookBytes = null; runDatabaseHealth(); refreshEditingRecordStates(); WorkbookImportSession.applied = true; WorkbookImportSession.status = "applied"; return {summary:WorkbookImportSession.summary, changes:editingChangeList(), health:buildHealth()}; }

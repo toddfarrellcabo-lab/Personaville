@@ -14,3 +14,11 @@ This build adds a non-destructive **Import as Scheduled Update** path to Databas
 
 ## Important
 This is a v2 preview patch. Test with the v6 Current database and Q4 2026 v7 workbook before merging into the production GitHub branch.
+
+
+## Patch 2 — lifecycle handoff
+When an incoming scheduled persona supersedes a Current persona, the Current
+record now receives `EffectiveEndDate = scheduled EffectiveStartDate - 1 day`.
+This prevents Current and Scheduled versions from having overlapping lifecycle
+date ranges. Existing earlier end dates are preserved and Current records are
+never deleted by Scheduled Import.
