@@ -104,7 +104,12 @@ function renderWorkbookImportPanel(){
     panel.appendChild(el("div",{class:"import-actions"},[
       el("button",{class:"btn",type:"button",onclick:()=>{ resetWorkbookImportState(); renderAll(); }},["Cancel Import"]),
       el("button",{class:"btn",type:"button",onclick:()=>downloadDatabaseWorkbook("working")},["Export Current Working Copy"]),
-      el("button",{class:"btn primary",type:"button",onclick:()=>applyWorkbookImportFromPanel(hasDeletes)},["Replace Working Copy"])
+      el("label",{class:"editor-field"},[
+        el("span",{},["Scheduled effective date"]),
+        Object.assign(document.createElement("input"),{type:"date",id:"scheduledImportEffectiveDate",value:(typeof scheduledImportDefaultDate==="function" ? scheduledImportDefaultDate() : "")})
+      ]),
+      el("button",{class:"btn primary",type:"button",onclick:()=>applyScheduledWorkbookImportFromPanel()},["Import as Scheduled Update"]),
+      el("button",{class:"btn",type:"button",onclick:()=>applyWorkbookImportFromPanel(hasDeletes)},["Replace Working Copy"])
     ]));
   }
   if(["applied","restored"].includes(state.status)){
@@ -114,6 +119,21 @@ function renderWorkbookImportPanel(){
     ]));
   }
 }
+
+function applyScheduledWorkbookImportFromPanel(){
+  try{
+    const input = document.getElementById("scheduledImportEffectiveDate");
+    const effectiveDate = input?.value || (typeof scheduledImportDefaultDate === "function" ? scheduledImportDefaultDate() : "");
+    if(!effectiveDate){ alert("Choose an effective date for the scheduled update."); return; }
+    if(editingHasUnsavedChanges() && !confirm("The working copy has unsaved changes. Continue by merging the scheduled workbook into this working copy?")) return;
+    if(!confirm(`Import this workbook as a Scheduled update effective ${effectiveDate}? Current personas will remain in the database.`)) return;
+    const result = mergePreparedWorkbookAsScheduled({effectiveDate, replaceWorkingCopy:true});
+    renderAll();
+    setView("review");
+    alert(`Scheduled import added ${result.scheduledPersonaCount} persona version(s) effective ${result.effectiveDate}. Current personas were preserved. Review Database Health and Data Explorer before publishing.`);
+  }catch(err){ alert(err.message); }
+}
+
 function applyWorkbookImportFromPanel(hasDeletes){
   try{
     if(editingHasUnsavedChanges() && !confirm("The working copy has unsaved changes. Replace it with the imported workbook?")) return;

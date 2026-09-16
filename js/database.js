@@ -851,6 +851,149 @@ function collectionImportSummary(beforeRaw, afterRaw){ const summary = {}; WORKB
 function prepareWorkbookImportFromWorkbook(workbook, filename="Uploaded workbook.xlsx"){ resetWorkbookImportState(); WorkbookImportSession.status = "reading"; WorkbookImportSession.filename = safeDisplayText(filename); setWorkbookImportStage("Reading workbook", "active"); const parsed = parseWorkbookToRaw(workbook); setWorkbookImportStage("Reading workbook"); setWorkbookImportStage("Validating structure", "active"); const validation = validateWorkbookStructure(parsed.raw, parsed.headers); WorkbookImportSession.errors = validation.errors; WorkbookImportSession.warnings = validation.warnings; if(!validation.valid){ WorkbookImportSession.status = "invalid"; return WorkbookImportSession; } setWorkbookImportStage("Validating structure"); setWorkbookImportStage("Normalizing data", "active"); const normalized = normalizeDatabasePayload(parsed.raw); setWorkbookImportStage("Normalizing data"); setWorkbookImportStage("Comparing with current data", "active"); const current = activeDatabaseSnapshot(); WorkbookImportSession.summary = collectionImportSummary(current, normalized); WorkbookImportSession.changes = buildChangeList(current, normalized); setWorkbookImportStage("Comparing with current data"); setWorkbookImportStage("Preparing working copy", "active"); WorkbookImportSession.importedRaw = cloneDatabasePayload(normalized); WorkbookImportSession.recoveryRaw = cloneDatabasePayload(current); setWorkbookImportStage("Preparing working copy"); setWorkbookImportStage("Ready for review"); WorkbookImportSession.status = "ready"; return WorkbookImportSession; }
 async function prepareWorkbookImportFile(file){ validateWorkbookFile(file); if(typeof XLSX === "undefined" || !XLSX?.read) throw new Error("SheetJS library did not load. Connect to the internet once and retry workbook import."); const buffer = await file.arrayBuffer(); let workbook; try{ workbook = XLSX.read(buffer, {type:"array", cellFormula:false, cellHTML:false, cellNF:false}); }catch(err){ throw new Error("Workbook could not be read. Export a fresh .xlsx workbook and retry."); } return prepareWorkbookImportFromWorkbook(workbook, file?.name || "Uploaded workbook.xlsx"); }
 function workbookImportRequiresDirtyDecision(){ return editingHasUnsavedChanges(); }
+
+function scheduledImportDefaultDate(){
+  const personas = WorkbookImportSession.importedRaw?.[SHEET_MAP.personas] || [];
+  const dates = personas.map(row => normalizeDateCell(row.EffectiveStartDate)).filter(Boolean).sort();
+  return dates[0] || "";
+}
+function nextScheduledPersonaID(used){
+  let max = 0;
+  used.forEach(id => {
+    const m = String(id || "").match(/^PM_(\d+)$/i);
+    if(m) max = Math.max(max, Number(m[1]));
+  });
+  let id;
+  do { max += 1; id = `PM_${String(max).padStart(3,"0")}`; } while(used.has(id));
+  used.add(id);
+  return id;
+}
+function uniqueScheduledID(base, used, tag){
+  const clean = String(base || "ITEM").trim() || "ITEM";
+  let candidate = `${clean}_SCH_${tag}`;
+  let n = 2;
+  while(used.has(candidate)){ candidate = `${clean}_SCH_${tag}_${n++}`; }
+  used.add(candidate);
+  return candidate;
+}
+function mergePreparedWorkbookAsScheduled(options={}){
+  if(WorkbookImportSession.status !== "ready" || !WorkbookImportSession.importedRaw) throw new Error("No validated workbook import is ready to apply.");
+  if(workbookImportRequiresDirtyDecision() && options.replaceWorkingCopy !== true) throw new Error("The working copy has unsaved changes. Export it, cancel import, or explicitly continue.");
+  const effectiveDate = normalizeDateCell(options.effectiveDate || scheduledImportDefaultDate());
+  if(!effectiveDate) throw new Error("Enter an Effective Date for the scheduled import.");
+  const current = cloneDatabasePayload(activeDatabaseSnapshot());
+  const incoming = cloneDatabasePayload(WorkbookImportSession.importedRaw);
+  const merged = cloneDatabasePayload(current);
+  const tag = String(effectiveDate).replace(/[^0-9]/g,"").slice(0,8) || "NEXT";
+
+  const curPersonas = merged[SHEET_MAP.personas] || (merged[SHEET_MAP.personas]=[]);
+  const inPersonas = incoming[SHEET_MAP.personas] || [];
+  const usedPersonaIDs = new Set(curPersonas.map(r=>String(r.PersonaID||"")).filter(Boolean));
+  const personaMap = new Map();
+
+  inPersonas.forEach(row => {
+    const oldID = String(row.PersonaID || "").trim();
+    const currentMatch = curPersonas.find(p => String(p.PersonaID||"").trim() === oldID);
+    const newID = currentMatch ? nextScheduledPersonaID(usedPersonaIDs) : (oldID && !usedPersonaIDs.has(oldID) ? oldID : nextScheduledPersonaID(usedPersonaIDs));
+    usedPersonaIDs.add(newID);
+    personaMap.set(oldID, newID);
+    curPersonas.push({
+      ...row,
+      PersonaID:newID,
+      SupersedesPersonaID: currentMatch ? oldID : (row.SupersedesPersonaID || ""),
+      EffectiveStartDate: normalizeDateCell(row.EffectiveStartDate) || effectiveDate,
+      EffectiveEndDate: normalizeDateCell(row.EffectiveEndDate),
+      LifecycleStatusOverride:"Scheduled",
+      ModifiedDate:new Date().toISOString(),
+      ModifiedBy: row.ModifiedBy || "Scheduled Workbook Import"
+    });
+  });
+
+  // Duplicate incoming speed options under their scheduled persona IDs.
+  const curSpeeds = merged[SHEET_MAP.speedOptions] || (merged[SHEET_MAP.speedOptions]=[]);
+  const inSpeeds = incoming[SHEET_MAP.speedOptions] || [];
+  const usedRefs = new Set(curSpeeds.map(r=>String(r.ReferenceID||"")).filter(Boolean));
+  const refMap = new Map();
+  inSpeeds.forEach(row => {
+    const mappedPersona = personaMap.get(String(row.PersonaID||""));
+    if(!mappedPersona) return;
+    const oldRef = String(row.ReferenceID || "").trim();
+    const newRef = uniqueScheduledID(oldRef || `${mappedPersona}_${row.SpeedOption||"SO"}`, usedRefs, tag);
+    refMap.set(`${row.PersonaID}|${oldRef}`, newRef);
+    curSpeeds.push({...row, PersonaID:mappedPersona, ReferenceID:newRef});
+  });
+
+  // Duplicate schedules used by scheduled speed options so future pricing never changes current pricing.
+  const curSchedules = merged[SHEET_MAP.schedules] || (merged[SHEET_MAP.schedules]=[]);
+  const inSchedules = incoming[SHEET_MAP.schedules] || [];
+  const usedScheduleIDs = new Set(curSchedules.map(r=>String(r.ScheduleID||"")).filter(Boolean));
+  const scheduleMap = new Map();
+  inSchedules.forEach(row => {
+    const oldRef = String(row.ReferenceID||"");
+    const speedOwner = inSpeeds.find(s=>String(s.ReferenceID||"")===oldRef);
+    if(!speedOwner || !personaMap.has(String(speedOwner.PersonaID||""))) return;
+    const oldSchedule = String(row.ScheduleID||"").trim();
+    if(!scheduleMap.has(oldSchedule)) scheduleMap.set(oldSchedule, uniqueScheduledID(oldSchedule || "SCH", usedScheduleIDs, tag));
+    const newRef = refMap.get(`${speedOwner.PersonaID}|${oldRef}`) || oldRef;
+    curSchedules.push({...row, ScheduleID:scheduleMap.get(oldSchedule), ReferenceID:newRef});
+  });
+  // Remap ScheduleID on scheduled speed rows.
+  curSpeeds.forEach(row => {
+    if([...personaMap.values()].includes(String(row.PersonaID||"")) && scheduleMap.has(String(row.ScheduleID||""))){
+      row.ScheduleID = scheduleMap.get(String(row.ScheduleID||""));
+    }
+  });
+
+  // Duplicate disclaimers referenced by scheduled personas.
+  const curDisc = merged[SHEET_MAP.disclaimers] || (merged[SHEET_MAP.disclaimers]=[]);
+  const inDisc = incoming[SHEET_MAP.disclaimers] || [];
+  const usedDisc = new Set(curDisc.map(r=>String(r.DisclaimerID||"")).filter(Boolean));
+  const discMap = new Map();
+  inDisc.forEach(row => {
+    const old = String(row.DisclaimerID||"").trim();
+    const id = uniqueScheduledID(old || "DISC", usedDisc, tag);
+    discMap.set(old,id);
+    curDisc.push({...row, DisclaimerID:id});
+  });
+  curPersonas.forEach(row => {
+    if([...personaMap.values()].includes(String(row.PersonaID||"")) && discMap.has(String(row.DisclaimerID||""))){
+      row.DisclaimerID = discMap.get(String(row.DisclaimerID||""));
+    }
+  });
+
+  // Reuse unchanged modifiers; duplicate changed modifier definitions so Current remains untouched.
+  const curMods = merged[SHEET_MAP.modifiers] || (merged[SHEET_MAP.modifiers]=[]);
+  const inMods = incoming[SHEET_MAP.modifiers] || [];
+  const usedMods = new Set(curMods.map(r=>String(r.ModifierID||"")).filter(Boolean));
+  const modMap = new Map();
+  inMods.forEach(row => {
+    const old=String(row.ModifierID||"").trim();
+    const existing=curMods.find(m=>String(m.ModifierID||"")===old);
+    if(existing && rawPayloadEquals(existing,row)){ modMap.set(old,old); return; }
+    if(existing){
+      const id=uniqueScheduledID(old||"MOD",usedMods,tag); modMap.set(old,id); curMods.push({...row,ModifierID:id});
+    }else{ usedMods.add(old); modMap.set(old,old); curMods.push({...row}); }
+  });
+  const curRel = merged[SHEET_MAP.personaModifiers] || (merged[SHEET_MAP.personaModifiers]=[]);
+  (incoming[SHEET_MAP.personaModifiers] || []).forEach(row => {
+    const pid=personaMap.get(String(row.PersonaID||""));
+    if(pid) curRel.push({...row,PersonaID:pid,ModifierID:modMap.get(String(row.ModifierID||"")) || row.ModifierID});
+  });
+
+  WorkbookImportSession.recoveryRaw = cloneDatabasePayload(current);
+  WorkbookImportSession.importMode = "scheduled";
+  WorkbookImportSession.effectiveDate = effectiveDate;
+  WorkbookImportSession.scheduledPersonaCount = personaMap.size;
+  updateWorkingCopy(merged, "scheduled-workbook-import", {filename:WorkbookImportSession.filename, effectiveDate, scheduledPersonaCount:personaMap.size, recoveryLabel:"Pre-scheduled-import state"});
+  EditingSession.lastSavedSnapshotRaw = cloneDatabasePayload(EditingSession.workingRaw);
+  persistEditingSession();
+  runDatabaseHealth();
+  refreshEditingRecordStates();
+  WorkbookImportSession.applied = true;
+  WorkbookImportSession.status = "applied";
+  return {scheduledPersonaCount:personaMap.size, changes:editingChangeList(), health:buildHealth(), effectiveDate};
+}
+
 function applyPreparedWorkbookImport(options={}){ if(WorkbookImportSession.status !== "ready" || !WorkbookImportSession.importedRaw) throw new Error("No validated workbook import is ready to apply."); if(workbookImportRequiresDirtyDecision() && options.replaceWorkingCopy !== true) throw new Error("The working copy has unsaved changes. Export it, cancel import, or explicitly replace it."); const removed = Object.values(WorkbookImportSession.summary || {}).reduce((n,s)=>n+(s.removed||0),0); if(removed && options.confirmDeletions !== true) throw new Error("This workbook proposes deletions. Review the deletion counts and confirm before applying."); const before = cloneDatabasePayload(activeDatabaseSnapshot()); WorkbookImportSession.recoveryRaw = before; updateWorkingCopy(WorkbookImportSession.importedRaw, "workbook-import", {filename:WorkbookImportSession.filename, recoveryLabel:"Pre-import state"}); EditingSession.lastSavedSnapshotRaw = cloneDatabasePayload(EditingSession.workingRaw); persistEditingSession(); DB.sourceWorkbookFile = null; DB.sourceWorkbookBytes = null; runDatabaseHealth(); refreshEditingRecordStates(); WorkbookImportSession.applied = true; WorkbookImportSession.status = "applied"; return {summary:WorkbookImportSession.summary, changes:editingChangeList(), health:buildHealth()}; }
 function restorePreImportState(){ if(!WorkbookImportSession.recoveryRaw) throw new Error("No pre-import recovery snapshot is available."); updateWorkingCopy(WorkbookImportSession.recoveryRaw, "restore-pre-import", {label:"Pre-import state"}); EditingSession.lastSavedSnapshotRaw = cloneDatabasePayload(EditingSession.workingRaw); persistEditingSession(); runDatabaseHealth(); WorkbookImportSession.status = "restored"; return EditingSession.workingRaw; }
 
