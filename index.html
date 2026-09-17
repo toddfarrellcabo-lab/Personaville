@@ -17,10 +17,12 @@
         <div class="sidebar-brand__subtitle">Market persona offer database</div>
       </div>
       <button class="nav active" data-view="personas" type="button" aria-current="page">View Personas</button>
-      <button class="nav" data-view="review" type="button">Data Explorer</button>
+      <button class="nav" data-view="editor" type="button">Persona Editor</button>
       <button class="nav" data-view="export" type="button">Export Cart</button>
-      <button class="nav" data-view="manage" type="button">Database</button>
-      <button class="nav" data-view="admin" type="button">Admin</button>
+      <div class="nav-divider" role="separator" aria-hidden="true"></div>
+      <button class="nav nav-secondary" data-view="review" type="button">Data Explorer</button>
+      <button class="nav nav-secondary" data-view="manage" type="button">Database</button>
+      <button class="nav nav-secondary" data-view="admin" type="button">Admin</button>
     </nav>
 
     <section class="content">
@@ -181,6 +183,47 @@
         </section>
       </section>
 
+      <section id="editor" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Focused editing workspace</p>
+            <h2>Persona Editor</h2>
+          </div>
+          <span id="personaEditorPageStatus" class="pill gray">Working Copy</span>
+        </div>
+        <p class="muted persona-editor-intro">Create or update a persona without navigating the database-management tools. Changes are saved to the working copy for review before publishing.</p>
+        <div class="manage-card manage-card-wide persona-editor-page">
+          <section class="manage-section persona-editor" aria-labelledby="personaEditorHeading">
+              <div class="section-head compact">
+                <div>
+                  <h3 id="personaEditorHeading">Persona Editor</h3>
+                  <p class="muted">Select a starting action. Existing personas open read-only until you choose a safe edit action.</p>
+                </div>
+                <span id="personaEditorCount" class="pill gray">0 personas</span>
+              </div>
+              <div id="personaStartPanel" class="persona-start-panel" aria-label="Persona Editor start actions">
+                <button id="personaCreateNew" class="btn primary" type="button">Create New Persona</button>
+                <button id="personaCreateFromExisting" class="btn" type="button">Create From Existing Persona</button>
+                <button id="personaViewExisting" class="btn" type="button">View Personas</button>
+              </div>
+              <div class="persona-editor-toolbar">
+                <input id="personaEditorSearch" class="search" placeholder="Search personas by name, ID, family, pricing, or status" autocomplete="off" />
+                <button id="personaCreateUpdatedVersion" class="btn primary" type="button">Create Updated Version</button>
+                <button id="personaDuplicate" class="btn" type="button">Duplicate as New Persona</button>
+                <details id="personaMoreActions" class="more-actions"><summary class="btn">More Actions</summary><div class="more-actions-menu"><button id="personaDeactivate" class="btn" type="button">Deactivate</button><button id="personaMarkDeleted" class="btn danger" type="button">Mark Deleted</button><button id="personaEditAnyway" class="btn" type="button">Edit Active Record Anyway</button></div></details>
+              </div>
+              <div class="persona-editor-layout">
+                <div id="personaEditorList" class="persona-editor-list" aria-label="Searchable persona list"></div>
+                <form id="personaEditorForm" class="persona-editor-form" aria-label="Persona fields"></form>
+              </div>
+              <div class="persona-editor-footer">
+                <div><span id="personaEditorSaveState" class="pill ok" aria-live="polite">Saved</span></div>
+                <div id="personaEditorActions" class="persona-editor-actions"><button id="personaEditorCancel" class="btn" type="button">Cancel</button><button id="personaEditorSave" class="btn primary" type="button">Save Changes</button><button id="personaEditorSchedule" class="btn" type="button">Schedule Persona</button></div>
+              </div>
+            </section>
+        </div>
+      </section>
+
       <section id="manage" class="view">
         <div class="section-head">
           <div>
@@ -223,34 +266,7 @@
               <p id="workbookExportStatus" class="muted" aria-live="polite"></p>
             </section>
           <div class="manage-workspace-grid" aria-label="Database Manager workspace sections">
-            <section class="manage-section persona-editor" aria-labelledby="personaEditorHeading">
-              <div class="section-head compact">
-                <div>
-                  <h3 id="personaEditorHeading">Persona Editor</h3>
-                  <p class="muted">Select a starting action. Existing personas open read-only until you choose a safe edit action.</p>
-                </div>
-                <span id="personaEditorCount" class="pill gray">0 personas</span>
-              </div>
-              <div id="personaStartPanel" class="persona-start-panel" aria-label="Persona Editor start actions">
-                <button id="personaCreateNew" class="btn primary" type="button">Create New Persona</button>
-                <button id="personaCreateFromExisting" class="btn" type="button">Create From Existing Persona</button>
-                <button id="personaViewExisting" class="btn" type="button">View Personas</button>
-              </div>
-              <div class="persona-editor-toolbar">
-                <input id="personaEditorSearch" class="search" placeholder="Search personas by name, ID, family, pricing, or status" autocomplete="off" />
-                <button id="personaCreateUpdatedVersion" class="btn primary" type="button">Create Updated Version</button>
-                <button id="personaDuplicate" class="btn" type="button">Duplicate as New Persona</button>
-                <details id="personaMoreActions" class="more-actions"><summary class="btn">More Actions</summary><div class="more-actions-menu"><button id="personaDeactivate" class="btn" type="button">Deactivate</button><button id="personaMarkDeleted" class="btn danger" type="button">Mark Deleted</button><button id="personaEditAnyway" class="btn" type="button">Edit Active Record Anyway</button></div></details>
-              </div>
-              <div class="persona-editor-layout">
-                <div id="personaEditorList" class="persona-editor-list" aria-label="Searchable persona list"></div>
-                <form id="personaEditorForm" class="persona-editor-form" aria-label="Persona fields"></form>
-              </div>
-              <div class="persona-editor-footer">
-                <div><span id="personaEditorSaveState" class="pill ok" aria-live="polite">Saved</span></div>
-                <div id="personaEditorActions" class="persona-editor-actions"><button id="personaEditorCancel" class="btn" type="button">Cancel</button><button id="personaEditorSave" class="btn primary" type="button">Save Changes</button><button id="personaEditorSchedule" class="btn" type="button">Schedule Persona</button></div>
-              </div>
-            </section>
+            
             <section class="manage-section speed-option-editor" aria-labelledby="speedOptionEditorHeading">
               <div class="section-head compact">
                 <div>
@@ -356,6 +372,7 @@
           <span id="exportCartCount" class="pill gray" aria-live="polite">0 personas in Export Cart</span>
         </div>
         <p class="muted">Assemble the final customer-facing persona set for print, PDF, or summary sharing. Download / Save as PDF opens your browser print dialog so you can choose the PDF destination when supported.</p>
+        <div id="exportSetPeriod" class="export-set-period" aria-live="polite" hidden></div>
         <div class="export-actions" role="toolbar" aria-label="Export actions">
             <button id="selectAllVisible" class="btn" type="button">Select Visible</button>
             <button id="clearExportSelection" class="btn" type="button">Clear Cart</button>

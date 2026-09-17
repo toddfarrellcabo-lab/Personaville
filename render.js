@@ -523,7 +523,7 @@ function savePersonaEditor(){
   editorSelectedPersonaID = saved.PersonaID;
   renderAll();
   setAdminSection("health");
-  setView("manage", {focus:false});
+  setView("editor", {focus:false});
 }
 function createNewPersonaEditor(){
   startEditingSession();
@@ -1394,12 +1394,58 @@ function renderExportCartTray(){
     el("button",{class:"btn", type:"button", onclick:clearExportSelection},["Clear Selection"])
   ]));
 }
+function formatExportPeriodDate(value){
+  if(!value) return "";
+  const raw=String(value).trim();
+  const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${Number(m[2])}/${Number(m[3])}/${String(m[1]).slice(-2)}`;
+  return raw;
+}
+function exportPeriodGroups(personas){
+  const groups=new Map();
+  personas.forEach(p=>{
+    const start=p.EffectiveStartDate||"", end=p.EffectiveEndDate||"";
+    const lifecycle=p.SupersedesPersonaID ? "Scheduled" : (p.Status||"Current");
+    const key=`${lifecycle}|${start}|${end}`;
+    if(!groups.has(key)) groups.set(key,{lifecycle,start,end,count:0});
+    groups.get(key).count++;
+  });
+  return [...groups.values()];
+}
+function exportPeriodText(personas){
+  const groups=exportPeriodGroups(personas);
+  if(!groups.length) return "";
+  if(groups.length===1){
+    const g=groups[0], range=[formatExportPeriodDate(g.start),formatExportPeriodDate(g.end)].filter(Boolean).join(" – ");
+    return `${String(g.lifecycle).toUpperCase()}${range?`: ${range}`:""} • ${g.count} persona${g.count===1?"":"s"}`;
+  }
+  return `MIXED SET • ${personas.length} personas across ${groups.length} effective periods`;
+}
+function renderExportSetPeriod(){
+  const banner=document.getElementById("exportSetPeriod");
+  if(!banner) return;
+  const personas=selectedExportPersonas();
+  banner.hidden=!personas.length;
+  banner.innerHTML="";
+  if(!personas.length) return;
+  banner.appendChild(el("strong",{},["EXPORT SET"]));
+  banner.appendChild(el("span",{},[exportPeriodText(personas)]));
+  const groups=exportPeriodGroups(personas);
+  if(groups.length>1){
+    groups.forEach(g=>{
+      const range=[formatExportPeriodDate(g.start),formatExportPeriodDate(g.end)].filter(Boolean).join(" – ");
+      banner.appendChild(el("small",{},[`${g.lifecycle}${range?`: ${range}`:""} (${g.count})`]));
+    });
+  }
+}
+
 function renderExportCartList(){
   const list = document.getElementById("exportCartList");
   const empty = document.getElementById("exportCartEmpty");
   const actions = document.getElementById("exportCartActions");
   if(!list) return;
   const personas = selectedExportPersonas();
+  renderExportSetPeriod();
   list.innerHTML = "";
   if(empty) empty.hidden = personas.length > 0;
   if(actions) actions.hidden = personas.length === 0;
@@ -1419,6 +1465,10 @@ function renderPrintArea(){
   area.innerHTML="";
   const selected = selectedExportPersonas();
   if(selected.length){
+    area.appendChild(el("div",{class:"print-export-period"},[
+      el("strong",{},["EXPORT SET"]),
+      el("span",{},[exportPeriodText(selected)])
+    ]));
     selected.forEach((p, index) => area.appendChild(printablePersonaCard(p, index, selected.length)));
     return;
   }

@@ -59,13 +59,15 @@ function refreshEditingStatus(){
 }
 
 const VIEW_ALIASES = {
-  "manage-personas":"manage",
+  "manage-personas":"editor",
+  "persona-editor":"editor",
   "database-manager":"manage",
   database:"manage"
 };
 
 const VIEW_TITLES = {
   personas:"View Personas",
+  editor:"Persona Editor",
   review:"Data Explorer",
   export:"Export Cart",
   manage:"Database Manager",

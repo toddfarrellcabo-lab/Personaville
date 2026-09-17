@@ -348,3 +348,33 @@ body.has-export-cart-tray .content{padding-bottom:110px}
 @media(max-width:900px){
   #personas .cart-entry-button{margin-left:0}
 }
+
+.export-set-period{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:12px 0 6px;padding:12px 14px;border:2px solid var(--pv-purple);
+  border-radius:12px;background:var(--pv-purple-light);color:var(--pv-charcoal)
+}
+.export-set-period[hidden]{display:none!important}
+.export-set-period strong{color:var(--pv-purple);font-size:12px;letter-spacing:.08em}
+.export-set-period span{font-size:16px;font-weight:900}
+.export-set-period small{width:100%;font-weight:800;color:var(--muted)}
+.print-export-period{display:none}
+@media print{
+  .export-set-period{display:none!important}
+  .print-export-period{
+    display:flex!important;gap:10px;align-items:baseline;
+    border-bottom:2px solid #222;padding:0 0 8px;margin:0 0 12px;
+    font-size:11pt
+  }
+  .print-export-period strong{font-size:9pt;letter-spacing:.08em}
+  .print-export-period span{font-weight:800}
+}
+
+.nav-divider{height:1px;background:var(--line);margin:10px 8px 6px}
+.nav-secondary{opacity:.88}
+.persona-editor-intro{max-width:850px;margin-top:-4px;margin-bottom:14px}
+.persona-editor-page>.persona-editor{
+  border:0;box-shadow:none;background:transparent;padding:0;min-height:0
+}
+#editor .persona-editor-layout{min-height:520px}
+@media(max-width:900px){.nav-divider{margin:8px 4px}}
