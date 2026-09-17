@@ -123,18 +123,18 @@ h2{margin:0;font-size:22px;color:var(--pv-charcoal)}
 .export-controls label{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .export-actions{
   position:sticky;
-  bottom:12px;
+  top:8px;
   z-index:80;
   display:flex;
   gap:10px;
   align-items:center;
-  margin:14px 0;
+  margin:12px 0 16px;
   padding:10px 12px;
   flex-wrap:wrap;
-  background:rgba(255,255,255,.96);
+  background:rgba(255,255,255,.97);
   border:1px solid var(--line);
   border-radius:14px;
-  box-shadow:0 -6px 24px rgba(22,16,28,.14);
+  box-shadow:0 6px 20px rgba(22,16,28,.14);
   backdrop-filter:blur(10px);
   -webkit-backdrop-filter:blur(10px);
 }
@@ -148,7 +148,7 @@ h2{margin:0;font-size:22px;color:var(--pv-charcoal)}
   margin-right:2px;
 }
 @media(max-width:900px){
-  .export-actions{bottom:8px;gap:8px;padding:9px 10px}
+  .export-actions{top:6px;gap:8px;padding:9px 10px}
   .export-actions::before{width:100%;margin-bottom:1px}
 }
 @media(max-width:560px){
