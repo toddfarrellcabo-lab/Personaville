@@ -356,6 +356,16 @@
           <span id="exportCartCount" class="pill gray" aria-live="polite">0 personas in Export Cart</span>
         </div>
         <p class="muted">Assemble the final customer-facing persona set for print, PDF, or summary sharing. Download / Save as PDF opens your browser print dialog so you can choose the PDF destination when supported.</p>
+        <div class="export-actions" role="toolbar" aria-label="Export actions">
+            <button id="selectAllVisible" class="btn" type="button">Select Visible</button>
+            <button id="clearExportSelection" class="btn" type="button">Clear Cart</button>
+            <button id="printPersona" class="btn primary" type="button">Print / Save Combined PDF</button>
+            <button id="savePdf" class="btn" type="button">Download PDF</button>
+            <button class="btn" type="button" disabled title="Separate PDF downloads are coming soon.">Download Separate PDFs — Coming Soon</button>
+            <button id="downloadSummary" class="btn" type="button">Download Summary</button>
+            <button id="copySummary" class="btn" type="button">Copy Summary</button>
+            <button class="btn" type="button" disabled title="Email sending is coming soon.">Email Set — Coming Soon</button>
+          </div>
         <div id="exportCartEmpty" class="empty-state-panel" hidden>
           <strong>Your Export Cart is empty.</strong>
           <p class="muted">Add personas from the Persona Library to build a multi-export set.</p>
@@ -368,16 +378,6 @@
             <span id="selectedCount" class="pill gray" aria-live="polite">0 personas in Export Cart</span>
           </div>
           <ol id="exportCartList" class="export-cart-list" aria-label="Selected personas"></ol>
-          <div class="export-actions" role="toolbar" aria-label="Export actions">
-            <button id="selectAllVisible" class="btn" type="button">Select Visible</button>
-            <button id="clearExportSelection" class="btn" type="button">Clear Cart</button>
-            <button id="printPersona" class="btn primary" type="button">Print / Save Combined PDF</button>
-            <button id="savePdf" class="btn" type="button">Download PDF</button>
-            <button class="btn" type="button" disabled title="Separate PDF downloads are coming soon.">Download Separate PDFs — Coming Soon</button>
-            <button id="downloadSummary" class="btn" type="button">Download Summary</button>
-            <button id="copySummary" class="btn" type="button">Copy Summary</button>
-            <button class="btn" type="button" disabled title="Email sending is coming soon.">Email Set — Coming Soon</button>
-          </div>
           <div id="printArea" class="print-stack"></div>
         </div>
       </section>
