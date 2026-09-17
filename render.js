@@ -57,20 +57,51 @@ function nextPersonaLaunch(){
   const date=future[0].date;
   return {date,count:future.filter(x=>x.date.getTime()===date.getTime()).length};
 }
+function formatScheduleDate(value){
+  const d=value instanceof Date ? value : parsePersonaLocalDate(value);
+  return d ? d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}) : "—";
+}
+function currentPersonaPeriod(){
+  const now=new Date();
+  const rows=(DB.personas||[]).map(p=>({
+    p,start:parsePersonaLocalDate(p.EffectiveStartDate),end:parsePersonaLocalDate(p.EffectiveEndDate)
+  })).filter(x=>String(x.p.Status||"").toLowerCase()!=="deleted" &&
+    String(x.p.LifecycleStatusOverride||"").toLowerCase()!=="inactive" &&
+    (!x.start || x.start<=now) && (!x.end || x.end>=now));
+  if(!rows.length) return null;
+  const ends=rows.map(x=>x.end).filter(Boolean).sort((a,b)=>a-b);
+  return {count:rows.length,end:ends[0]||null};
+}
 function updatePersonaLaunchTicker(){
   const root=document.getElementById("personaLaunchTicker");
   const countdown=document.getElementById("personaLaunchTickerCountdown");
   const dateLabel=document.getElementById("personaLaunchTickerDate");
+  const current=document.getElementById("personaCurrentPeriod");
+  const next=document.getElementById("personaNextPeriod");
   if(!root||!countdown||!dateLabel) return;
   const launch=nextPersonaLaunch();
-  if(!launch){root.hidden=true;return;}
-  root.hidden=false;
-  const diff=Math.max(0,launch.date-new Date());
-  const days=Math.floor(diff/86400000);
-  const hours=Math.floor((diff%86400000)/3600000);
-  const mins=Math.floor((diff%3600000)/60000);
-  countdown.textContent=`${days}d ${hours}h ${mins}m`;
-  dateLabel.textContent=`until ${launch.count} persona${launch.count===1?"":"s"} go live • ${launch.date.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}`;
+  const active=currentPersonaPeriod();
+  root.hidden=!launch && !active;
+  if(root.hidden) return;
+
+  if(launch){
+    const diff=Math.max(0,launch.date-new Date());
+    const days=Math.floor(diff/86400000);
+    const hours=Math.floor((diff%86400000)/3600000);
+    const mins=Math.floor((diff%3600000)/60000);
+    countdown.textContent=`${days}d ${hours}h ${mins}m`;
+    dateLabel.textContent=`${formatScheduleDate(launch.date)} • ${launch.count} persona${launch.count===1?"":"s"}`;
+    if(next) next.innerHTML=`<span>Scheduled starts</span><b>${formatScheduleDate(launch.date)}</b>`;
+  }else{
+    countdown.textContent="No scheduled update";
+    dateLabel.textContent="";
+    if(next) next.innerHTML="";
+  }
+  if(current){
+    current.innerHTML=active
+      ? `<span>Current ends</span><b>${active.end ? formatScheduleDate(active.end) : "Ongoing"}</b>`
+      : `<span>Current</span><b>None active</b>`;
+  }
 }
 function renderPersonaLaunchTicker(){
   updatePersonaLaunchTicker();

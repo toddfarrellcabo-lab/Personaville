@@ -9,11 +9,6 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-  <div id="personaLaunchTicker" class="persona-launch-ticker" role="status" aria-live="polite" hidden>
-        <span class="launch-ticker-label">NEXT PERSONA LAUNCH</span>
-        <strong id="personaLaunchTickerCountdown"></strong>
-        <span id="personaLaunchTickerDate"></span>
-      </div>
   <main class="app">
     <nav class="sidebar" aria-label="Primary navigation">
       <div class="sidebar-brand" aria-label="Application identity">
@@ -21,6 +16,18 @@
         <div class="preview-badge" aria-label="Development Preview">Development Preview</div>
         <div class="sidebar-brand__subtitle">Market persona offer database</div>
       </div>
+
+      <aside id="personaLaunchTicker" class="launch-schedule-card" aria-label="Persona launch schedule" aria-live="polite" hidden>
+        <div class="launch-schedule-title">Launch Schedule</div>
+        <div class="launch-schedule-next">
+          <span>NEXT UPDATE</span>
+          <strong id="personaLaunchTickerCountdown">—</strong>
+        </div>
+        <div id="personaLaunchTickerDate" class="launch-schedule-date"></div>
+        <div id="personaCurrentPeriod" class="launch-schedule-row"></div>
+        <div id="personaNextPeriod" class="launch-schedule-row"></div>
+      </aside>
+
       <button class="nav active" data-view="personas" type="button" aria-current="page">View Personas</button>
       <button class="nav" data-view="editor" type="button">Persona Editor</button>
       <button class="nav" data-view="export" type="button">Export Cart</button>
