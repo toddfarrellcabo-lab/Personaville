@@ -455,22 +455,22 @@ body.has-export-cart-tray .content{padding-bottom:110px}
 /* Launch Schedule placement/readability refinement */
 .sidebar #personaLaunchTicker.launch-schedule-card{
   margin:22px 8px 12px;padding:9px 8px;
-  background:rgba(255,255,255,.055);color:#f4edf7;
-  border:1px solid rgba(255,255,255,.16);box-shadow:none
+  background:rgba(141,59,145,.22);color:#f4edf7;
+  border:1px solid rgba(255,255,255,.22);box-shadow:none
 }
 .sidebar #personaLaunchTicker .launch-schedule-title{
-  color:#d9c6df;border-bottom-color:rgba(255,255,255,.13);
+  color:#f0e6f2!important;border-bottom-color:rgba(255,255,255,.18);
   font-size:9px;letter-spacing:.08em
 }
 .sidebar #personaLaunchTicker .launch-schedule-next span,
-.sidebar #personaLaunchTicker .launch-schedule-row span{color:#bdb2c1}
+.sidebar #personaLaunchTicker .launch-schedule-row span{color:#d8cddd!important}
 .sidebar #personaLaunchTicker .launch-schedule-next strong{
-  color:#f5d8ff;font-size:14px;line-height:1.15
+  color:#fff!important;font-size:14px;line-height:1.15
 }
 .sidebar #personaLaunchTicker .launch-schedule-date{
-  color:#e7dce9;font-size:9px;line-height:1.35
+  color:#f2eaf4!important;font-size:9px;line-height:1.35
 }
 .sidebar #personaLaunchTicker .launch-schedule-row{
   color:#eee5f0;border-top-color:rgba(255,255,255,.12);font-size:8.5px;line-height:1.3
 }
-.sidebar #personaLaunchTicker .launch-schedule-row b{color:#fff;font-weight:800}
+.sidebar #personaLaunchTicker .launch-schedule-row b{color:#fff!important;font-weight:800}

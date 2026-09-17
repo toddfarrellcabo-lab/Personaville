@@ -141,7 +141,7 @@ async function loadPersonavilleHeader(){
   if(!container || container.dataset.loaded === "true") return;
 
   try{
-    const response = await fetch("components/header.html");
+    const response = await fetch("components/header.html?v=20260917-1618-v7", {cache:"no-store"});
     if(!response.ok) throw new Error(`HTTP ${response.status}`);
     container.innerHTML = await response.text();
     container.dataset.loaded = "true";

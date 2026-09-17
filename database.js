@@ -481,7 +481,7 @@ function rowsFromSheet(sheet){
   return rows.filter(r => Object.values(r).some(v => String(v).trim() !== ""));
 }
 async function loadBundledDatabase(){
-  const res = await fetch("database/persona-db.json");
+  const res = await fetch("database/persona-db.json?v=20260917-1618-v7", {cache:"no-store"});
   if(!res.ok) throw new Error("Could not load database/persona-db.json");
   const data = await res.json();
   logStartupDiagnostic("bundled fetch", data);
