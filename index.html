@@ -27,6 +27,11 @@
 
     <section class="content">
       <div id="personaville-header-container" class="personaville-header-shell"></div>
+      <div id="personaLaunchTicker" class="persona-launch-ticker" role="status" aria-live="polite" hidden>
+        <span class="launch-ticker-label">NEXT PERSONA LAUNCH</span>
+        <strong id="personaLaunchTickerCountdown"></strong>
+        <span id="personaLaunchTickerDate"></span>
+      </div>
 
       <section id="personas" class="view active">
         <div class="section-head">
@@ -92,7 +97,7 @@
         <div class="admin-tabs" role="tablist" aria-label="Admin sections">
           <button id="admin-tab-overview" class="admin-tab active" role="tab" type="button" aria-selected="true" aria-controls="admin-overview" data-admin-section="overview">Overview</button>
           <button id="admin-tab-health" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-health" data-admin-section="health">Database Health</button>
-          <button id="admin-tab-publish" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-publish" data-admin-section="publish">Publish Database</button>
+          <button id="admin-tab-publish" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-publish" data-admin-section="publish">Commit Database</button>
           <button id="admin-tab-modifiers" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-modifiers" data-admin-section="modifiers">Modifiers</button>
           <button id="admin-tab-assets" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-assets" data-admin-section="assets">Asset Manager</button>
           <button id="admin-tab-settings" class="admin-tab" role="tab" type="button" aria-selected="false" aria-controls="admin-settings" data-admin-section="settings">Settings</button>
@@ -116,9 +121,9 @@
         </section>
 
         <section id="admin-publish" class="admin-panel" role="tabpanel" aria-labelledby="admin-tab-publish" tabindex="0" hidden>
-          <div class="section-head"><h3>Publish Database</h3></div>
+          <div class="section-head"><h3>Commit Official Database</h3></div>
           <div class="publish-controls" aria-labelledby="publishControlsHeading">
-            <h3 id="publishControlsHeading">Publishing Controls</h3>
+            <h3 id="publishControlsHeading">Official Database Controls</h3>
             <div class="publish-action-grid">
               <div class="publish-action-card">
                 <label class="btn primary" title="Upload the edited Excel workbook into browser memory.">
@@ -129,8 +134,8 @@
                 <p class="sr-only">The selected workbook is loaded into browser memory only; it is not uploaded to a server or written back to the repository.</p>
               </div>
               <div class="publish-action-card">
-                <button id="loadBundled" class="btn" type="button" title="Reload database/persona-db.json from the published site.">Load Published Database</button>
-                <p class="muted">Reload database/persona-db.json from the published site.</p>
+                <button id="loadBundled" class="btn" type="button" title="Reload database/persona-db.json from the official site database.">Load Official Database</button>
+                <p class="muted">Reload database/persona-db.json from the official site database.</p>
               </div>
               <div class="publish-action-card">
                 <button id="downloadUpdatedJson" class="btn" type="button" disabled title="Available after Upload Workbook loads a workbook.">Download Updated JSON</button>
@@ -138,15 +143,15 @@
               </div>
             </div>
             <div class="publish-package-card">
-              <button id="downloadPublishingPackage" class="btn primary" type="button">Download v2 Publishing Package</button>
-              <p class="muted">Packages approved working-copy changes for manual GitHub publication. Review Database Health first; BAD/Error results block normal publication unless explicitly overridden.</p>
+              <button id="downloadPublishingPackage" class="btn primary" type="button">Download Database Update Package</button>
+              <p class="muted">Packages validated working changes so they can be committed to the official Personaville database. Review Database Health first; BAD/Error results block normal publication unless explicitly overridden.</p>
             </div>
           </div>
           <div id="publishPanel" class="publish-panel"></div>
           <div id="buildSummary" class="build-summary" hidden></div>
           <div id="downloadInstructions" class="download-instructions" hidden>Replace database/persona-db.json in GitHub with this downloaded file.</div>
           <div class="publishing-tips">
-            <h3>Publishing Tips</h3>
+            <h3>Database Update Steps</h3>
             <ul>
               <li>Upload Workbook only loads data into browser memory.</li>
               <li>Download Updated JSON creates the file to upload.</li>
@@ -237,31 +242,32 @@
           <div class="manage-actions">
             <button id="startEditing" class="btn primary" type="button">Start Editing</button>
             <button id="discardWorkingCopy" class="btn" type="button">Discard Working Changes</button>
-            <button id="resetWorkingCopy" class="btn" type="button">Reset from Published Database</button>
+            <button id="resetWorkingCopy" class="btn" type="button">Reset from Official Database</button>
             <button id="undoEdit" class="btn" type="button">Undo</button>
             <button id="redoEdit" class="btn" type="button">Redo</button>
             <button class="btn" type="button" onclick="setView('review')">Data Explorer</button>
           </div>
           <div id="editingStateSummary" class="kpis dashboard-overview" aria-live="polite"></div>
             <section class="manage-section workbook-export" aria-labelledby="workbookExportHeading">
-              <div class="section-head compact"><div><h3 id="workbookExportHeading">Database Files</h3><p class="muted">Download a structured Excel workbook for manual review, backup, editing, and later import through Database Manager.</p></div></div>
+              <div class="section-head compact"><div><h3 id="workbookExportHeading">Database File</h3><p class="muted">Personaville uses one official database. Scheduled personas can be committed now; their effective dates control when they become active.</p></div></div>
               <div class="publish-action-grid">
                 <div class="publish-action-card">
-                  <button id="exportPublishedWorkbook" class="btn" type="button">Export Published Workbook</button>
-                  <p class="muted">Exports only the canonical published snapshot. Uncommitted working-copy edits are not included.</p>
-                </div>
-                <div class="publish-action-card">
-                  <button id="exportWorkingWorkbook" class="btn primary" type="button">Export Working Copy Workbook</button>
-                  <p class="muted">Exports the current working copy, including genuine staged edits. Working-copy exports are marked unpublished.</p>
+                  <button id="exportWorkingWorkbook" class="btn primary" type="button">Export Personaville Workbook</button>
+                  <p class="muted">Exports the complete database you are currently working with, including Active, Scheduled, Draft, Expired, and Inactive personas.</p>
                 </div>
                 <div class="publish-action-card workbook-import-card">
-                  <label class="btn primary" title="Import an edited Personaville Excel workbook into the working copy.">
+                  <label class="btn primary" title="Import an edited Personaville Excel workbook.">
                     Import Workbook
-                    <input id="workbookImport" type="file" accept=".xlsx" hidden aria-label="Import workbook into the working copy">
+                    <input id="workbookImport" type="file" accept=".xlsx" hidden aria-label="Import workbook">
                   </label>
-                  <p class="muted">Upload a Personaville .xlsx workbook. Changes will be validated and loaded into the working copy for review. Published data will not be changed.</p>
+                  <p class="muted">Import an edited Personaville workbook for validation and review before committing it to the official database.</p>
                 </div>
               </div>
+              <details class="advanced-database-actions">
+                <summary>Advanced / recovery</summary>
+                <button id="exportPublishedWorkbook" class="btn small" type="button">Download Last Official Snapshot</button>
+                <p class="muted">Recovery copy of the last committed database before current working changes.</p>
+              </details>
               <div id="workbookImportPanel" class="workbook-import-panel" aria-live="polite"></div>
               <p id="workbookExportStatus" class="muted" aria-live="polite"></p>
             </section>
@@ -297,7 +303,7 @@
               <div class="section-head compact">
                 <div>
                   <h3 id="pricingScheduleEditorHeading">Pricing Schedule Editor</h3>
-                  <p class="muted">Create and maintain structured pricing rows without directly editing Excel. Published data is protected until you download and publish the working copy.</p>
+                  <p class="muted">Create and maintain structured pricing rows without directly editing Excel. Official data is protected until you download and publish the working copy.</p>
                 </div>
               </div>
               <div class="persona-editor-toolbar">
@@ -350,7 +356,7 @@
           <span id="reviewChangeCount" class="pill gray" aria-live="polite" role="status">0 changes</span>
         </div>
         <div class="manage-card manage-card-wide" aria-labelledby="reviewHeading">
-          <p class="muted">Review working-copy changes and database records before export. Published data is preserved until you explicitly download and publish the exported JSON.</p>
+          <p class="muted">Review working-copy changes and database records before export. Official data is preserved until you explicitly download and publish the exported JSON.</p>
           <div id="reviewSummary" class="kpis dashboard-overview" aria-live="polite"></div>
           <div class="persona-editor-toolbar health-export-actions">
             <button id="reviewExportHealthReport" class="btn" type="button">Export Health Report</button>

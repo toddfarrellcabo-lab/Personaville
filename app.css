@@ -378,3 +378,15 @@ body.has-export-cart-tray .content{padding-bottom:110px}
 }
 #editor .persona-editor-layout{min-height:520px}
 @media(max-width:900px){.nav-divider{margin:8px 4px}}
+
+.persona-launch-ticker{
+  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+  margin:0 0 16px;padding:10px 14px;border:1px solid var(--line);
+  border-radius:10px;background:var(--panel);text-align:center
+}
+.persona-launch-ticker[hidden]{display:none!important}
+.launch-ticker-label{font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--muted)}
+.persona-launch-ticker strong{font-size:20px;line-height:1;color:var(--pv-purple)}
+#personaLaunchTickerDate{font-weight:700}
+.advanced-database-actions{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.advanced-database-actions summary{cursor:pointer;font-weight:800;margin-bottom:10px}

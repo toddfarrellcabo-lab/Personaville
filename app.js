@@ -211,12 +211,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
   document.getElementById("loadBundled").addEventListener("click", async ()=>{
-    if(!warnIfUnsavedChanges("Loading the published database will discard unsaved working-copy changes. Continue?")) return;
+    if(!warnIfUnsavedChanges("Loading the official database will discard unsaved working-copy changes. Continue?")) return;
     try{
       await loadBundledDatabase();
       renderAll();
     }catch(err){
-      alert("Could not load published database: " + err.message + "\\nIf opening from local file, use Upload Workbook instead.");
+      alert("Could not load official database: " + err.message + "\\nIf opening from local file, use Upload Workbook instead.");
     }
   });
   document.getElementById("globalSearch").addEventListener("input", renderTiles);
@@ -311,7 +311,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     restorePrintDocumentTitle();
   });
 
-  // Try published database on load. If local browser blocks fetch, user can still upload workbook.
+  // Try official database on load. If local browser blocks fetch, user can still upload workbook.
   try{
     await loadBundledDatabase();
     renderAll();

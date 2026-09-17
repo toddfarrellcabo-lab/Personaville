@@ -42,8 +42,45 @@ function modifierChip(m){
   ]);
 }
 
+let personaLaunchTickerTimer = null;
+function parsePersonaLocalDate(value){
+  const m=String(value||"").trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return null;
+  return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),0,0,0,0);
+}
+function nextPersonaLaunch(){
+  const now=new Date();
+  const future=(DB.personas||[]).map(p=>({p,date:parsePersonaLocalDate(p.EffectiveStartDate)}))
+    .filter(x=>x.date && x.date>now && String(x.p.Status||"").toLowerCase()!=="deleted" && String(x.p.LifecycleStatusOverride||"").toLowerCase()!=="inactive")
+    .sort((a,b)=>a.date-b.date);
+  if(!future.length) return null;
+  const date=future[0].date;
+  return {date,count:future.filter(x=>x.date.getTime()===date.getTime()).length};
+}
+function updatePersonaLaunchTicker(){
+  const root=document.getElementById("personaLaunchTicker");
+  const countdown=document.getElementById("personaLaunchTickerCountdown");
+  const dateLabel=document.getElementById("personaLaunchTickerDate");
+  if(!root||!countdown||!dateLabel) return;
+  const launch=nextPersonaLaunch();
+  if(!launch){root.hidden=true;return;}
+  root.hidden=false;
+  const diff=Math.max(0,launch.date-new Date());
+  const days=Math.floor(diff/86400000);
+  const hours=Math.floor((diff%86400000)/3600000);
+  const mins=Math.floor((diff%3600000)/60000);
+  countdown.textContent=`${days}d ${hours}h ${mins}m`;
+  dateLabel.textContent=`until ${launch.count} persona${launch.count===1?"":"s"} go live • ${launch.date.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}`;
+}
+function renderPersonaLaunchTicker(){
+  updatePersonaLaunchTicker();
+  if(personaLaunchTickerTimer) clearInterval(personaLaunchTickerTimer);
+  personaLaunchTickerTimer=setInterval(updatePersonaLaunchTicker,60000);
+}
+
 function renderAll(){
   restoreExportSelection();
+  renderPersonaLaunchTicker();
   renderKpis();
   fillFilters();
   renderTiles();
@@ -1155,7 +1192,7 @@ function renderModifiers(){
   if(!box) return;
   box.innerHTML="";
   if(!DB.modifiers.length){
-    box.appendChild(emptyState("No modifiers are available.", "Load the published database or upload a workbook to review modifiers."));
+    box.appendChild(emptyState("No modifiers are available.", "Load the official database or upload a workbook to review modifiers."));
     return;
   }
   DB.modifiers.forEach(m => {
@@ -1176,7 +1213,7 @@ function renderHealth(){
   box.innerHTML="";
   const rows = buildHealth();
   if(!rows.length){
-    box.appendChild(emptyState("No health checks are available.", "Load the published database or upload a workbook to review database health."));
+    box.appendChild(emptyState("No health checks are available.", "Load the official database or upload a workbook to review database health."));
     return;
   }
   box.appendChild(el("div",{class:"health-review-actions"},[
