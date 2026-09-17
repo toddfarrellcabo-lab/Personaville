@@ -1337,6 +1337,11 @@ function syncExportSelectionUI(){
   if(countEl) countEl.textContent = label;
   const pageCount = document.getElementById("exportCartCount");
   if(pageCount) pageCount.textContent = label;
+  const viewCartButton = document.getElementById("viewExportCart");
+  if(viewCartButton){
+    viewCartButton.textContent = `Open Export Cart (${count})`;
+    viewCartButton.disabled = false;
+  }
   updatePersonaBulkSelectionToolbar();
   document.querySelectorAll(".select-persona input[type='checkbox']").forEach(input => {
     input.checked = exportSelection.has(input.closest("article")?.dataset?.personaId || input.value);
@@ -1362,7 +1367,7 @@ function updatePersonaBulkSelectionToolbar(){
   setDisabled("deselectAllPersonas", !hasSelected);
   setDisabled("selectVisiblePersonas", !hasVisible);
   setDisabled("deselectVisiblePersonas", !hasVisible);
-  setDisabled("viewExportCart", !hasSelected);
+  setDisabled("viewExportCart", false);
   setDisabled("clearPersonaCart", !hasSelected);
   setDisabled("clearExportSelection", !hasSelected);
   setDisabled("selectAllVisible", !hasVisible);
@@ -1372,18 +1377,20 @@ function renderExportCartTray(){
   const tray = document.getElementById("exportCartTray");
   if(!tray) return;
   const count = exportSelection.size;
-  tray.hidden = count === 0;
-  document.body.classList.toggle("has-export-cart-tray", count > 0);
-  if(!count) return;
+  const personasViewActive = document.getElementById("personas")?.classList.contains("active");
+  // Keep the cart affordance visible on the Persona Library even when empty.
+  // This prevents the "Add/Open Export Cart" control from disappearing between selections.
+  tray.hidden = !personasViewActive && count === 0;
+  document.body.classList.toggle("has-export-cart-tray", personasViewActive || count > 0);
   const countText = `${count} persona${count === 1 ? "" : "s"}`;
-  const message = `${countText} added to Export Cart`;
+  const message = count ? `${countText} added to Export Cart` : "Select personas above to add them to the Export Cart";
   tray.innerHTML = "";
   tray.appendChild(el("div",{class:"export-cart-tray-copy", role:"status", "aria-live":"polite"},[
     el("strong",{},[countText]),
     el("span",{},[message])
   ]));
   tray.appendChild(el("div",{class:"export-cart-tray-actions"},[
-    el("button",{class:"btn primary", type:"button", onclick:()=>{ if(typeof setView === "function") setView("export"); }},["Open Export Cart"]),
+    el("button",{class:"btn primary", type:"button", disabled:count === 0, onclick:()=>{ if(typeof setView === "function") setView("export"); }},[count ? `Open Export Cart (${count})` : "Export Cart"]),
     el("button",{class:"btn", type:"button", onclick:clearExportSelection},["Clear Selection"])
   ]));
 }

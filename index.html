@@ -73,7 +73,7 @@
               <button id="selectVisiblePersonas" class="btn small" type="button">Select Visible</button>
               <button id="deselectVisiblePersonas" class="btn small" type="button">Deselect Visible</button>
               <span id="personaSelectionCount" class="bulk-selection-count" aria-live="polite">0 selected</span>
-              <button id="viewExportCart" class="btn small" type="button">View Cart</button>
+              <button id="viewExportCart" class="btn primary small cart-entry-button" type="button">Open Export Cart (0)</button>
               <button id="clearPersonaCart" class="btn small" type="button">Clear Cart</button>
             </div>
             <div id="personaTiles" class="tiles persona-grid" aria-live="polite"></div>
@@ -368,7 +368,7 @@
             <span id="selectedCount" class="pill gray" aria-live="polite">0 personas in Export Cart</span>
           </div>
           <ol id="exportCartList" class="export-cart-list" aria-label="Selected personas"></ol>
-          <div class="export-actions">
+          <div class="export-actions" role="toolbar" aria-label="Export actions">
             <button id="selectAllVisible" class="btn" type="button">Select Visible</button>
             <button id="clearExportSelection" class="btn" type="button">Clear Cart</button>
             <button id="printPersona" class="btn primary" type="button">Print / Save Combined PDF</button>

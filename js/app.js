@@ -91,6 +91,9 @@ function setView(name, options = {}){
     n.setAttribute("aria-current", active ? "page" : "false");
   });
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id===name));
+  if(typeof renderExportCartTray === "function"){
+    renderExportCartTray();
+  }
   const headerContainer = document.getElementById("personaville-header-container");
   if(headerContainer){
     headerContainer.hidden = false;
