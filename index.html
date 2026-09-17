@@ -9,6 +9,11 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
+  <div id="personaLaunchTicker" class="persona-launch-ticker" role="status" aria-live="polite" hidden>
+        <span class="launch-ticker-label">NEXT PERSONA LAUNCH</span>
+        <strong id="personaLaunchTickerCountdown"></strong>
+        <span id="personaLaunchTickerDate"></span>
+      </div>
   <main class="app">
     <nav class="sidebar" aria-label="Primary navigation">
       <div class="sidebar-brand" aria-label="Application identity">
@@ -27,11 +32,6 @@
 
     <section class="content">
       <div id="personaville-header-container" class="personaville-header-shell"></div>
-      <div id="personaLaunchTicker" class="persona-launch-ticker" role="status" aria-live="polite" hidden>
-        <span class="launch-ticker-label">NEXT PERSONA LAUNCH</span>
-        <strong id="personaLaunchTickerCountdown"></strong>
-        <span id="personaLaunchTickerDate"></span>
-      </div>
 
       <section id="personas" class="view active">
         <div class="section-head">

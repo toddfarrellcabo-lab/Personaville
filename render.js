@@ -1527,7 +1527,13 @@ function printablePersonaCard(p, index=0, total=1){
   card.appendChild(el("header",{class:"print-page-header"},[
     el("div",{},[
       el("div",{class:"print-page-kicker"},[`Persona ${index + 1} of ${total}`]),
-      el("h1",{},[safeName])
+      el("h1",{},[safeName]),
+      el("div",{class:"print-promo-period"},[
+        el("strong",{},[p.SupersedesPersonaID ? "SCHEDULED PROMO" : "PROMO PERIOD"]),
+        el("span",{},[
+          `${formatExportPeriodDate(p.EffectiveStartDate) || "—"} – ${formatExportPeriodDate(p.EffectiveEndDate) || "Ongoing"}`
+        ])
+      ])
     ]),
     el("div",{class:"print-page-meta"},[
       el("span",{},[`Family Group: ${p.FamilyGroup || "—"}`]),

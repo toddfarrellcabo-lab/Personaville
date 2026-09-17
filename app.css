@@ -390,3 +390,42 @@ body.has-export-cart-tray .content{padding-bottom:110px}
 #personaLaunchTickerDate{font-weight:700}
 .advanced-database-actions{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
 .advanced-database-actions summary{cursor:pointer;font-weight:800;margin-bottom:10px}
+
+.print-promo-period{
+  display:flex;align-items:baseline;gap:8px;margin-top:6px;
+  font-weight:900
+}
+.print-promo-period strong{
+  font-size:10px;letter-spacing:.08em;text-transform:uppercase
+}
+.print-promo-period span{font-size:16px}
+@media print{
+  .print-promo-period{
+    margin-top:5px;padding:4px 7px;border:1.5px solid #111;
+    width:max-content;max-width:100%
+  }
+  .print-promo-period strong{font-size:8pt}
+  .print-promo-period span{font-size:11pt;font-weight:900}
+}
+
+/* Global launch countdown: intentionally bright, short, and always visible. */
+#personaLaunchTicker.persona-launch-ticker{
+  position:sticky;top:0;z-index:10000;
+  box-sizing:border-box;width:100%;min-height:38px;
+  margin:0;padding:7px 16px;
+  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+  border:0;border-radius:0;
+  background:#ffea00;color:#111;
+  box-shadow:0 1px 0 rgba(0,0,0,.22);
+  text-align:center
+}
+#personaLaunchTicker.persona-launch-ticker[hidden]{display:none!important}
+#personaLaunchTicker .launch-ticker-label{color:#111;font-size:11px;font-weight:950;letter-spacing:.09em}
+#personaLaunchTicker strong{color:#111;font-size:18px;font-weight:950;line-height:1}
+#personaLaunchTickerDate{color:#111;font-size:13px;font-weight:850}
+@media(max-width:700px){
+  #personaLaunchTicker.persona-launch-ticker{min-height:42px;padding:6px 10px;gap:6px}
+  #personaLaunchTicker strong{font-size:16px}
+  #personaLaunchTickerDate{font-size:11px}
+}
+@media print{#personaLaunchTicker{display:none!important}}
