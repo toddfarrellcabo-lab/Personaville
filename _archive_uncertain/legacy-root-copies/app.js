@@ -59,13 +59,15 @@ function refreshEditingStatus(){
 }
 
 const VIEW_ALIASES = {
-  "manage-personas":"manage",
+  "manage-personas":"editor",
+  "persona-editor":"editor",
   "database-manager":"manage",
   database:"manage"
 };
 
 const VIEW_TITLES = {
   personas:"View Personas",
+  editor:"Persona Editor",
   review:"Data Explorer",
   export:"Export Cart",
   manage:"Database Manager",
@@ -102,7 +104,7 @@ function setView(name, options = {}){
     window.setPersonavilleHeaderState(name === "personas" ? "full" : "compact");
   }
   if(VIEW_TITLES[name]){
-    document.title = `Personaville — ${VIEW_TITLES[name]}`;
+    document.title = `Personaville v2 Preview — ${VIEW_TITLES[name]}`;
   }
   if(options.updateHash !== false && window.location.hash !== `#${name}`){
     window.history.replaceState(null, "", `#${name}`);
@@ -139,7 +141,7 @@ async function loadPersonavilleHeader(){
   if(!container || container.dataset.loaded === "true") return;
 
   try{
-    const response = await fetch("components/header.html");
+    const response = await fetch("components/header.html?v=20260917-1618-v7", {cache:"no-store"});
     if(!response.ok) throw new Error(`HTTP ${response.status}`);
     container.innerHTML = await response.text();
     container.dataset.loaded = "true";
@@ -209,12 +211,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
   document.getElementById("loadBundled").addEventListener("click", async ()=>{
-    if(!warnIfUnsavedChanges("Loading the published database will discard unsaved working-copy changes. Continue?")) return;
+    if(!warnIfUnsavedChanges("Loading the official database will discard unsaved working-copy changes. Continue?")) return;
     try{
       await loadBundledDatabase();
       renderAll();
     }catch(err){
-      alert("Could not load published database: " + err.message + "\\nIf opening from local file, use Upload Workbook instead.");
+      alert("Could not load official database: " + err.message + "\\nIf opening from local file, use Upload Workbook instead.");
     }
   });
   document.getElementById("globalSearch").addEventListener("input", renderTiles);
@@ -309,7 +311,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     restorePrintDocumentTitle();
   });
 
-  // Try published database on load. If local browser blocks fetch, user can still upload workbook.
+  // Try official database on load. If local browser blocks fetch, user can still upload workbook.
   try{
     await loadBundledDatabase();
     renderAll();
