@@ -51,10 +51,14 @@ context.XLSX.write = wb => { context.XLSX.write.last = JSON.stringify(wb); retur
 const publishedBook = workbook('published', {date:new Date('2026-07-17T12:34:00Z')});
 const workingBook = workbook('working', {date:new Date('2026-07-17T12:34:00Z'), confirmedHealthErrors:true});
 
-for(const sheet of ['README','Metadata','01_Settings','02_FamilyGroups','03_PricingSets','04_Modifiers','05_Personas','06_SpeedOptions','07_PricingSchedules','08_Disclaimers','09_Icons','10_PersonaModifiers','12_DataHealth','Database Health summary'.slice(0,31)]){
+for(const sheet of ['README','Metadata','01_Settings','02_FamilyGroups','03_PricingSets','04_Modifiers','05_Personas','06_SpeedOptions','07_PricingSchedules','08_Disclaimers','09_Icons','10_PersonaModifiers','12_DataHealth','Persona Master','Database Health summary'.slice(0,31)]){
   assert(workingBook.SheetNames.includes(sheet), `expected sheet ${sheet}`);
 }
 assert.deepStrictEqual(workingBook.SheetNames.filter(n => n === '05_Personas'), ['05_Personas'], 'sheet names match importer expectations without duplicate persona structures');
+const personaMaster = context.XLSX.utils.sheet_to_json(workingBook.Sheets['Persona Master']);
+assert.strictEqual(personaMaster.length, published['05_Personas'].length, 'Persona Master has one human-readable row per persona');
+assert.strictEqual(personaMaster[0].PersonaID, '00123', 'Persona Master preserves stable PersonaID');
+assert.strictEqual(personaMaster[0]['Pricing Set'], changed['05_Personas'][0].PricingSet, 'Persona Master exposes Pricing Set separately from modifiers');
 
 const metadataRows = context.XLSX.utils.sheet_to_json(workingBook.Sheets.Metadata);
 assert.strictEqual(metadataRows.find(r => r.Field === 'publication state').Value, 'Unpublished working copy');

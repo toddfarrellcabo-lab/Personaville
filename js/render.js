@@ -1302,10 +1302,22 @@ function removeExportPersona(personaID){
   refreshExportSelectionViews();
 }
 function selectAllPersonas(){
-  DB.personas.forEach(p => { if(p.PersonaID) exportSelection.add(p.PersonaID); });
+  // Bulk selection follows the active Persona Library filters. This keeps
+  // Lifecycle=Scheduled, Pricing Set, Family Group and search selections scoped
+  // to the records the Results header says are being shown.
+  const source = personaFiltersActive() ? visiblePersonas() : DB.personas;
+  // "Select All" defines the cart from the current result set. Clear stale
+  // selections first so switching from All -> Scheduled cannot leave the
+  // previously selected Current personas in the cart.
+  exportSelection.clear();
+  source.forEach(p => { if(p.PersonaID) exportSelection.add(p.PersonaID); });
   refreshExportSelectionViews();
 }
-function deselectAllPersonas(){ clearExportSelection(); }
+function deselectAllPersonas(){
+  if(!personaFiltersActive()) return clearExportSelection();
+  visiblePersonas().forEach(p => { if(p.PersonaID) exportSelection.delete(p.PersonaID); });
+  refreshExportSelectionViews();
+}
 function selectAllVisiblePersonas(){
   visiblePersonas().forEach(p => { if(p.PersonaID) exportSelection.add(p.PersonaID); });
   refreshExportSelectionViews();
@@ -1342,7 +1354,11 @@ function updatePersonaBulkSelectionToolbar(){
   const hasVisible = visible.length > 0;
   const hasSelected = selected > 0;
   const setDisabled = (id, disabled) => { const button = document.getElementById(id); if(button) button.disabled = disabled; };
-  setDisabled("selectAllPersonas", total === 0);
+  const selectAllButton = document.getElementById("selectAllPersonas");
+  const deselectAllButton = document.getElementById("deselectAllPersonas");
+  if(selectAllButton) selectAllButton.textContent = filtersActive ? `Select All ${visible.length}` : `Select All ${total}`;
+  if(deselectAllButton) deselectAllButton.textContent = filtersActive ? "Deselect Filtered" : "Deselect All";
+  setDisabled("selectAllPersonas", filtersActive ? !hasVisible : total === 0);
   setDisabled("deselectAllPersonas", !hasSelected);
   setDisabled("selectVisiblePersonas", !hasVisible);
   setDisabled("deselectVisiblePersonas", !hasVisible);

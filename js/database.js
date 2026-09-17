@@ -701,7 +701,8 @@ function publishingInstructions(){
 const WORKBOOK_INSTRUCTION_SHEET = "README";
 const WORKBOOK_METADATA_SHEET = "Metadata";
 const WORKBOOK_HEALTH_SUMMARY_SHEET = "Database Health summary";
-const WORKBOOK_GENERATED_SHEETS = new Set([WORKBOOK_INSTRUCTION_SHEET, WORKBOOK_METADATA_SHEET, WORKBOOK_HEALTH_SUMMARY_SHEET, WORKBOOK_HEALTH_SUMMARY_SHEET.slice(0, 31)]);
+const WORKBOOK_PERSONA_MASTER_SHEET = "Persona Master";
+const WORKBOOK_GENERATED_SHEETS = new Set([WORKBOOK_INSTRUCTION_SHEET, WORKBOOK_METADATA_SHEET, WORKBOOK_HEALTH_SUMMARY_SHEET, WORKBOOK_HEALTH_SUMMARY_SHEET.slice(0, 31), WORKBOOK_PERSONA_MASTER_SHEET]);
 const WORKBOOK_SHEET_ORDER = [
   SHEET_MAP.summary,
   SHEET_MAP.settings,
@@ -808,6 +809,54 @@ function workbookMetadataRows(source, raw, healthRows, date=new Date(), confirme
     ...Object.keys(counts).sort().map(sheet => ({Field:`record count: ${sheet}`, Value:counts[sheet]}))
   ];
 }
+function personaMasterRows(raw){
+  const personas = raw?.[SHEET_MAP.personas] || [];
+  const speeds = raw?.[SHEET_MAP.speedOptions] || [];
+  const schedules = raw?.[SHEET_MAP.schedules] || [];
+  const modifiers = raw?.[SHEET_MAP.modifiers] || [];
+  const personaModifiers = raw?.[SHEET_MAP.personaModifiers] || [];
+  const disclaimers = raw?.[SHEET_MAP.disclaimers] || [];
+  const modifierNames = new Map(modifiers.map(row => [String(row.ModifierID || ""), row.ModifierName || row.Label || row.ModifierID || ""]));
+  const disclaimerText = new Map(disclaimers.map(row => [String(row.DisclaimerID || ""), row.DisclaimerText || ""]));
+  const modifierMap = new Map();
+  personaModifiers.forEach(row => {
+    const pid = String(row.PersonaID || "");
+    if(!modifierMap.has(pid)) modifierMap.set(pid, []);
+    modifierMap.get(pid).push({order:Number(row.DisplayOrder || 999), name:modifierNames.get(String(row.ModifierID || "")) || row.ModifierID || ""});
+  });
+  const headers = ["PersonaID","Persona / Flyer","Family Group","Pricing Set","Lifecycle","Effective Start","Effective End","Supersedes PersonaID","Standalone Modifiers","Equipment Included","Symmetrical Speeds"];
+  for(let n=1;n<=4;n++) headers.push(`Speed ${n}`,`Pricing ${n}`,`Regular Rate ${n}`);
+  headers.push("Disclaimer");
+  const rows = personas.map(persona => {
+    const pid = String(persona.PersonaID || "");
+    const personaSpeeds = speeds.filter(row => String(row.PersonaID || "") === pid && truthy(row.Active)).sort((a,b)=>Number(a.SortOrder||0)-Number(b.SortOrder||0));
+    const slots = [];
+    personaSpeeds.slice(0,4).forEach(speed => {
+      const pricing = schedules.filter(row => String(row.ScheduleID||"") === String(speed.ScheduleID||"") && String(row.ReferenceID||"") === String(speed.ReferenceID||"")).sort((a,b)=>Number(a.Sequence||0)-Number(b.Sequence||0));
+      const display = pricing.map(row => `${truthy(row.DisplayAsFree) ? "Free" : `$${Number(row.Price||0).toFixed(Number(row.Price||0)%1 ? 2 : 0)}/mo.`} ${row.DisplayLabel || ""}`.trim()).join("; ");
+      slots.push(speed.DisplaySpeed || "", display, speed.RegularRate ?? "");
+    });
+    while(slots.length < 12) slots.push("");
+    const standalone = (modifierMap.get(pid)||[]).sort((a,b)=>a.order-b.order).map(x=>x.name).filter(Boolean).join("; ");
+    return {
+      "PersonaID":pid,
+      "Persona / Flyer":persona.PersonaName || "",
+      "Family Group":persona.FamilyGroup || "",
+      "Pricing Set":persona.PricingSet || "",
+      "Lifecycle":persona.SupersedesPersonaID || String(persona.LifecycleStatusOverride||"").toLowerCase()==="scheduled" ? "Scheduled" : "Current",
+      "Effective Start":normalizeDateCell(persona.EffectiveStartDate),
+      "Effective End":normalizeDateCell(persona.EffectiveEndDate),
+      "Supersedes PersonaID":persona.SupersedesPersonaID || "",
+      "Standalone Modifiers":standalone,
+      "Equipment Included":truthy(persona.EquipInc) ? "Yes" : "No",
+      "Symmetrical Speeds":truthy(persona.SymSpeed) ? "Yes" : "No",
+      ...Object.fromEntries(headers.slice(11,23).map((h,i)=>[h,slots[i] ?? ""])),
+      "Disclaimer":disclaimerText.get(String(persona.DisclaimerID || "")) || ""
+    };
+  });
+  return {headers, rows};
+}
+
 function databaseWorkbookBytes(source="working", options={}){
   if(typeof XLSX === "undefined" || !XLSX?.utils || !XLSX?.write) throw new Error("SheetJS library did not load. Connect to the internet once and retry workbook export.");
   const raw = sourceRawForWorkbook(source);
@@ -820,6 +869,8 @@ function databaseWorkbookBytes(source="working", options={}){
     const rows = Array.isArray(raw[sheetName]) ? raw[sheetName].map(row => canonicalizeRowForComparison(row)) : [];
     XLSX.utils.book_append_sheet(workbook, worksheetFromRows(sheetName, rows), sheetName.slice(0, 31));
   });
+  const master = personaMasterRows(raw);
+  XLSX.utils.book_append_sheet(workbook, worksheetFromRows(WORKBOOK_PERSONA_MASTER_SHEET, master.rows, master.headers), WORKBOOK_PERSONA_MASTER_SHEET);
   XLSX.utils.book_append_sheet(workbook, worksheetFromRows(WORKBOOK_HEALTH_SUMMARY_SHEET, healthRows), WORKBOOK_HEALTH_SUMMARY_SHEET.slice(0,31));
   return new Uint8Array(XLSX.write(workbook, {bookType:"xlsx", type:"array"}));
 }
@@ -848,7 +899,7 @@ function importedRowKey(sheet, row, index){ const cfg = WORKBOOK_IMPORT_COLLECTI
 function addImportError(errors, sheet, rowNumber, message){ errors.push({sheet, row:rowNumber || "", message:`${sheet}${rowNumber ? ` row ${rowNumber}` : ""}: ${message}`}); }
 function validateWorkbookStructure(raw, headers){ const errors = [], warnings = []; WORKBOOK_IMPORT_REQUIRED_SHEETS.forEach(sheet => { if(!Object.prototype.hasOwnProperty.call(raw, sheet)) addImportError(errors, sheet, null, "Required worksheet is missing. Preserve exported worksheet names exactly."); }); Object.keys(raw || {}).forEach(sheet => { if(/^\d{2}_/i.test(sheet) && !WORKBOOK_IMPORT_REQUIRED_SHEETS.includes(sheet) && sheet !== SHEET_MAP.settings && sheet !== SHEET_MAP.health && sheet !== SHEET_MAP.summary) warnings.push({sheet, message:`${sheet}: unexpected non-critical worksheet will be preserved but not imported as an editable collection.`}); }); const meta = Array.isArray(raw[WORKBOOK_METADATA_SHEET]) ? raw[WORKBOOK_METADATA_SHEET] : []; const schema = meta.find(row => String(row.Field || "").toLowerCase() === "schema version")?.Value; if(schema && String(schema) !== EDIT_SESSION_SCHEMA_VERSION) addImportError(errors, WORKBOOK_METADATA_SHEET, null, `Unsupported schema version ${safeDisplayText(schema)}.`); WORKBOOK_IMPORT_REQUIRED_SHEETS.forEach(sheet => { const cfg = WORKBOOK_IMPORT_COLLECTIONS[sheet]; const sheetHeaders = headers[sheet] || []; if(!Array.isArray(raw[sheet])) return; cfg.required.forEach(header => { if(!sheetHeaders.includes(header)) addImportError(errors, sheet, 1, `Required header '${header}' is missing or renamed.`); }); sheetHeaders.forEach(header => { if(WORKBOOK_RUNTIME_ONLY_FIELDS.has(header)) addImportError(errors, sheet, 1, `Unexpected critical/runtime column '${header}' is not allowed in an import workbook.`); }); const seen = new Map(); raw[sheet].forEach((row, index) => { const rowNumber = index + 2; cfg.required.forEach(field => { if(String(row[field] ?? "").trim() === "") addImportError(errors, sheet, rowNumber, `Missing required ID/value '${field}'.`); }); const key = importedRowKey(sheet, row, index); if(key){ if(seen.has(key)) addImportError(errors, sheet, rowNumber, `Duplicate ID/key '${safeDisplayText(key)}' also appears on row ${seen.get(key)}.`); else seen.set(key, rowNumber); } Object.entries(row).forEach(([field, value]) => { const text = String(value ?? "").trim(); if(/date/i.test(field) && text && !isValidCalendarDate(normalizeDateCell(value))) addImportError(errors, sheet, rowNumber, `Malformed date in '${field}'. Use YYYY-MM-DD.`); if((field === "Fiber" || field === "DisplayAsFree" || /^is/i.test(field)) && text && !isBooleanLike(value)) addImportError(errors, sheet, rowNumber, `Invalid boolean in '${field}'. Use TRUE or FALSE.`); if(WORKBOOK_NUMERIC_FIELD_PATTERNS.test(field) && text && Number.isNaN(Number(value))) addImportError(errors, sheet, rowNumber, `Invalid numeric value in '${field}'.`); }); }); }); const personaIds = new Set((raw[SHEET_MAP.personas] || []).map(r => String(r.PersonaID || "").trim()).filter(Boolean)); const modifierIds = new Set((raw[SHEET_MAP.modifiers] || []).map(r => String(r.ModifierID || "").trim()).filter(Boolean)); const disclaimerIds = new Set((raw[SHEET_MAP.disclaimers] || []).map(r => String(r.DisclaimerID || "").trim()).filter(Boolean)); (raw[SHEET_MAP.speedOptions] || []).forEach((row,i)=>{ if(row.PersonaID && !personaIds.has(String(row.PersonaID))) addImportError(errors,SHEET_MAP.speedOptions,i+2,`Broken reference to PersonaID '${safeDisplayText(row.PersonaID)}'.`); }); (raw[SHEET_MAP.personaModifiers] || []).forEach((row,i)=>{ if(row.PersonaID && !personaIds.has(String(row.PersonaID))) addImportError(errors,SHEET_MAP.personaModifiers,i+2,`Broken reference to PersonaID '${safeDisplayText(row.PersonaID)}'.`); if(row.ModifierID && !modifierIds.has(String(row.ModifierID))) addImportError(errors,SHEET_MAP.personaModifiers,i+2,`Broken reference to ModifierID '${safeDisplayText(row.ModifierID)}'.`); }); (raw[SHEET_MAP.personas] || []).forEach((row,i)=>{ if(row.DisclaimerID && !disclaimerIds.has(String(row.DisclaimerID))) addImportError(errors,SHEET_MAP.personas,i+2,`Broken reference to DisclaimerID '${safeDisplayText(row.DisclaimerID)}'.`); if(row.SupersedesPersonaID && !personaIds.has(String(row.SupersedesPersonaID))) addImportError(errors,SHEET_MAP.personas,i+2,`Broken reference to SupersedesPersonaID '${safeDisplayText(row.SupersedesPersonaID)}'.`); }); return {valid:errors.length === 0, errors, warnings}; }
 function collectionImportSummary(beforeRaw, afterRaw){ const summary = {}; WORKBOOK_IMPORT_REQUIRED_SHEETS.forEach(sheet => { const beforeRows = canonicalSnapshotForComparison(beforeRaw, false)[sheet] || []; const afterRows = canonicalSnapshotForComparison(afterRaw, false)[sheet] || []; const beforeMap = new Map(beforeRows.map((row,i)=>[sheetRecordKey(sheet,row,i),row])); const afterMap = new Map(afterRows.map((row,i)=>[sheetRecordKey(sheet,row,i),row])); const keys = new Set([...beforeMap.keys(), ...afterMap.keys()]); const counts = {added:0, changed:0, removed:0, unchanged:0}; keys.forEach(key => { if(!beforeMap.has(key)) counts.added++; else if(!afterMap.has(key)) counts.removed++; else if(rawPayloadEquals(beforeMap.get(key), afterMap.get(key))) counts.unchanged++; else counts.changed++; }); const largeDeletion = beforeRows.length >= 10 && counts.removed / beforeRows.length >= 0.25; summary[sheet] = {...counts, label:WORKBOOK_IMPORT_COLLECTIONS[sheet].label, totalBefore:beforeRows.length, totalAfter:afterRows.length, largeDeletion}; }); return summary; }
-function prepareWorkbookImportFromWorkbook(workbook, filename="Uploaded workbook.xlsx"){ resetWorkbookImportState(); WorkbookImportSession.status = "reading"; WorkbookImportSession.filename = safeDisplayText(filename); setWorkbookImportStage("Reading workbook", "active"); const parsed = parseWorkbookToRaw(workbook); setWorkbookImportStage("Reading workbook"); setWorkbookImportStage("Validating structure", "active"); const validation = validateWorkbookStructure(parsed.raw, parsed.headers); WorkbookImportSession.errors = validation.errors; WorkbookImportSession.warnings = validation.warnings; if(!validation.valid){ WorkbookImportSession.status = "invalid"; return WorkbookImportSession; } setWorkbookImportStage("Validating structure"); setWorkbookImportStage("Normalizing data", "active"); const normalized = normalizeDatabasePayload(parsed.raw); setWorkbookImportStage("Normalizing data"); setWorkbookImportStage("Comparing with current data", "active"); const current = activeDatabaseSnapshot(); WorkbookImportSession.summary = collectionImportSummary(current, normalized); WorkbookImportSession.changes = buildChangeList(current, normalized); setWorkbookImportStage("Comparing with current data"); setWorkbookImportStage("Preparing working copy", "active"); WorkbookImportSession.importedRaw = cloneDatabasePayload(normalized); WorkbookImportSession.recoveryRaw = cloneDatabasePayload(current); setWorkbookImportStage("Preparing working copy"); setWorkbookImportStage("Ready for review"); WorkbookImportSession.status = "ready"; return WorkbookImportSession; }
+function prepareWorkbookImportFromWorkbook(workbook, filename="Uploaded workbook.xlsx"){ resetWorkbookImportState(); WorkbookImportSession.status = "reading"; WorkbookImportSession.filename = safeDisplayText(filename); setWorkbookImportStage("Reading workbook", "active"); const parsed = parseWorkbookToRaw(workbook); setWorkbookImportStage("Reading workbook"); setWorkbookImportStage("Validating structure", "active"); const validation = validateWorkbookStructure(parsed.raw, parsed.headers); WorkbookImportSession.errors = validation.errors; WorkbookImportSession.warnings = validation.warnings; if(!validation.valid){ WorkbookImportSession.status = "invalid"; return WorkbookImportSession; } setWorkbookImportStage("Validating structure"); setWorkbookImportStage("Normalizing data", "active"); const importRaw = cloneDatabasePayload(parsed.raw); WORKBOOK_GENERATED_SHEETS.forEach(name => { delete importRaw[name]; }); const normalized = normalizeDatabasePayload(importRaw); setWorkbookImportStage("Normalizing data"); setWorkbookImportStage("Comparing with current data", "active"); const current = activeDatabaseSnapshot(); WorkbookImportSession.summary = collectionImportSummary(current, normalized); WorkbookImportSession.changes = buildChangeList(current, normalized); setWorkbookImportStage("Comparing with current data"); setWorkbookImportStage("Preparing working copy", "active"); WorkbookImportSession.importedRaw = cloneDatabasePayload(normalized); WorkbookImportSession.recoveryRaw = cloneDatabasePayload(current); setWorkbookImportStage("Preparing working copy"); setWorkbookImportStage("Ready for review"); WorkbookImportSession.status = "ready"; return WorkbookImportSession; }
 async function prepareWorkbookImportFile(file){ validateWorkbookFile(file); if(typeof XLSX === "undefined" || !XLSX?.read) throw new Error("SheetJS library did not load. Connect to the internet once and retry workbook import."); const buffer = await file.arrayBuffer(); let workbook; try{ workbook = XLSX.read(buffer, {type:"array", cellFormula:false, cellHTML:false, cellNF:false}); }catch(err){ throw new Error("Workbook could not be read. Export a fresh .xlsx workbook and retry."); } return prepareWorkbookImportFromWorkbook(workbook, file?.name || "Uploaded workbook.xlsx"); }
 function workbookImportRequiresDirtyDecision(){ return editingHasUnsavedChanges(); }
 

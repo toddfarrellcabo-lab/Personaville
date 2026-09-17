@@ -70,6 +70,11 @@ const firstFamily = vm.runInContext('DB.personas[0].FamilyGroup', context);
 checkedFamilies.splice(0, checkedFamilies.length, firstFamily);
 const visibleIds = vm.runInContext('visiblePersonas().map(p => p.PersonaID)', context);
 assert(visibleIds.length > 0 && visibleIds.length < total, 'family filter should create a smaller visible set');
+context.clearExportSelection();
+context.selectAllPersonas();
+assert.strictEqual(JSON.stringify(vm.runInContext('[...exportSelection].sort()', context)), JSON.stringify([...visibleIds].sort()), 'Select All respects active filters');
+context.deselectAllPersonas();
+assert.strictEqual(vm.runInContext('exportSelection.size', context), 0, 'Deselect All removes the filtered selection when filters are active');
 context.selectAllVisiblePersonas();
 assert.strictEqual(JSON.stringify(vm.runInContext('[...exportSelection].sort()', context)), JSON.stringify([...visibleIds].sort()), 'Select Visible selects only filtered results');
 context.selectAllVisiblePersonas();
@@ -97,3 +102,18 @@ assert.strictEqual(controls.get('selectVisiblePersonas').disabled, true, 'empty-
 assert.strictEqual(controls.get('deselectVisiblePersonas').disabled, true, 'empty-result state disables Deselect Visible');
 
 console.log('Bulk persona selection controls update the shared Export Cart correctly.');
+
+
+// Regression: a previous unfiltered Select All must not leak into a later filtered Select All.
+controls.get('globalSearch').value = '';
+checkedFamilies.length = 0;
+pricing = '';
+controls.get('lifecycleFilter').value = 'all';
+context.clearExportSelection();
+context.selectAllPersonas();
+assert.strictEqual(vm.runInContext('exportSelection.size', context), total, 'precondition: all personas selected');
+checkedFamilies.push(firstFamily);
+const filteredIdsAfterAll = vm.runInContext('visiblePersonas().map(p => p.PersonaID)', context);
+context.selectAllPersonas();
+assert.strictEqual(JSON.stringify(vm.runInContext('[...exportSelection].sort()', context)), JSON.stringify([...filteredIdsAfterAll].sort()), 'filtered Select All replaces stale cart contents instead of accumulating hidden personas');
+console.log('Filtered Select All replacement regression passes.');
