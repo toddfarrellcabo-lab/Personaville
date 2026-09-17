@@ -79,28 +79,32 @@ function updatePersonaLaunchTicker(){
   const current=document.getElementById("personaCurrentPeriod");
   const next=document.getElementById("personaNextPeriod");
   if(!root||!countdown||!dateLabel) return;
-  const launch=nextPersonaLaunch();
-  const active=currentPersonaPeriod();
-  root.hidden=!launch && !active;
-  if(root.hidden) return;
-
-  if(launch){
-    const diff=Math.max(0,launch.date-new Date());
-    const days=Math.floor(diff/86400000);
-    const hours=Math.floor((diff%86400000)/3600000);
-    const mins=Math.floor((diff%3600000)/60000);
-    countdown.textContent=`${days}d ${hours}h ${mins}m`;
-    dateLabel.textContent=`${formatScheduleDate(launch.date)} • ${launch.count} persona${launch.count===1?"":"s"}`;
-    if(next) next.innerHTML=`<span>Scheduled starts</span><b>${formatScheduleDate(launch.date)}</b>`;
-  }else{
-    countdown.textContent="No scheduled update";
-    dateLabel.textContent="";
-    if(next) next.innerHTML="";
-  }
-  if(current){
-    current.innerHTML=active
+  root.hidden=false;
+  try{
+    const launch=nextPersonaLaunch();
+    const active=currentPersonaPeriod();
+    if(launch){
+      const diff=Math.max(0,launch.date-new Date());
+      const days=Math.floor(diff/86400000);
+      const hours=Math.floor((diff%86400000)/3600000);
+      const mins=Math.floor((diff%3600000)/60000);
+      countdown.textContent=`${days}d ${hours}h ${mins}m`;
+      dateLabel.textContent=`${formatScheduleDate(launch.date)} • ${launch.count} persona${launch.count===1?"":"s"}`;
+      if(next) next.innerHTML=`<span>Scheduled starts</span><b>${formatScheduleDate(launch.date)}</b>`;
+    }else{
+      countdown.textContent="No upcoming launch found";
+      dateLabel.textContent="No future Effective Start Date found.";
+      if(next) next.innerHTML="<span>Scheduled starts</span><b>None found</b>";
+    }
+    if(current) current.innerHTML=active
       ? `<span>Current ends</span><b>${active.end ? formatScheduleDate(active.end) : "Ongoing"}</b>`
-      : `<span>Current</span><b>None active</b>`;
+      : "<span>Current ends</span><b>No active period found</b>";
+  }catch(err){
+    console.error("Launch Schedule could not be calculated:",err);
+    countdown.textContent="Schedule unavailable";
+    dateLabel.textContent="Could not calculate schedule from loaded database.";
+    if(current) current.innerHTML="<span>Current ends</span><b>Unavailable</b>";
+    if(next) next.innerHTML="<span>Scheduled starts</span><b>Unavailable</b>";
   }
 }
 function renderPersonaLaunchTicker(){

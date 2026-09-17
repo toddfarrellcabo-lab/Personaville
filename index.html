@@ -17,15 +17,15 @@
         <div class="sidebar-brand__subtitle">Market persona offer database</div>
       </div>
 
-      <aside id="personaLaunchTicker" class="launch-schedule-card" aria-label="Persona launch schedule" aria-live="polite" hidden>
+      <aside id="personaLaunchTicker" class="launch-schedule-card" aria-label="Persona launch schedule" aria-live="polite">
         <div class="launch-schedule-title">Launch Schedule</div>
         <div class="launch-schedule-next">
           <span>NEXT UPDATE</span>
-          <strong id="personaLaunchTickerCountdown">—</strong>
+          <strong id="personaLaunchTickerCountdown">Loading schedule…</strong>
         </div>
-        <div id="personaLaunchTickerDate" class="launch-schedule-date"></div>
-        <div id="personaCurrentPeriod" class="launch-schedule-row"></div>
-        <div id="personaNextPeriod" class="launch-schedule-row"></div>
+        <div id="personaLaunchTickerDate" class="launch-schedule-date">Checking persona effective dates</div>
+        <div id="personaCurrentPeriod" class="launch-schedule-row"><span>Current ends</span><b>—</b></div>
+        <div id="personaNextPeriod" class="launch-schedule-row"><span>Scheduled starts</span><b>—</b></div>
       </aside>
 
       <button class="nav active" data-view="personas" type="button" aria-current="page">View Personas</button>
