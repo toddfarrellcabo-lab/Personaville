@@ -1565,6 +1565,28 @@ function renderPrintArea(){
   ]));
   area.appendChild(printablePersonaCard(p, 0, 1));
 }
+function personaRunInfo(p){
+  const today=new Date(); today.setHours(0,0,0,0);
+  let start=parsePersonaLocalDate(p.EffectiveStartDate);
+  let end=parsePersonaLocalDate(p.EffectiveEndDate);
+
+  // Legacy current records: use the known 8/1/26 start and end them the day
+  // before the next scheduled launch when their dates are absent.
+  if(!start && !p.SupersedesPersonaID) start=new Date(2026,7,1);
+  if(!end && !p.SupersedesPersonaID){
+    const launch=nextPersonaLaunch();
+    if(launch){ end=new Date(launch.date); end.setDate(end.getDate()-1); }
+  }
+
+  let state="current", label="CURRENT RUN";
+  if(start && today<start){ state="future"; label="FUTURE RUN"; }
+  else if(end && today>end){ state="past"; label="PAST RUN"; }
+
+  const startText=start ? formatScheduleDate(start) : "Start unknown";
+  const endText=end ? formatScheduleDate(end) : "Ongoing";
+  return {state,label,startText,endText};
+}
+
 function printablePersonaCard(p, index=0, total=1){
   const safeName = p.PersonaName || "Untitled persona";
   const card = el("section",{class:"print-card print-persona-page"},[]);
@@ -1573,12 +1595,10 @@ function printablePersonaCard(p, index=0, total=1){
     el("div",{},[
       el("div",{class:"print-page-kicker"},[`Persona ${index + 1} of ${total}`]),
       el("h1",{},[safeName]),
-      el("div",{class:"print-promo-period"},[
-        el("strong",{},[p.SupersedesPersonaID ? "SCHEDULED PROMO" : "PROMO PERIOD"]),
-        el("span",{},[
-          `${formatExportPeriodDate(p.EffectiveStartDate) || "—"} – ${formatExportPeriodDate(p.EffectiveEndDate) || "Ongoing"}`
-        ])
-      ])
+      (()=>{ const run=personaRunInfo(p); return el("div",{class:`print-run-period ${run.state}`},[
+        el("strong",{},[run.label]),
+        el("span",{},[`${run.startText} – ${run.endText}`])
+      ]); })()
     ]),
     el("div",{class:"print-page-meta"},[
       el("span",{},[`Family Group: ${p.FamilyGroup || "—"}`]),
