@@ -69,8 +69,18 @@ function currentPersonaPeriod(){
     String(x.p.LifecycleStatusOverride||"").toLowerCase()!=="inactive" &&
     (!x.start || x.start<=now) && (!x.end || x.end>=now));
   if(!rows.length) return null;
+  const starts=rows.map(x=>x.start).filter(Boolean).sort((a,b)=>a-b);
   const ends=rows.map(x=>x.end).filter(Boolean).sort((a,b)=>a-b);
-  return {count:rows.length,end:ends[0]||null};
+  const next=nextPersonaLaunch();
+  let end=ends[0]||null;
+  if(!end && next){
+    end=new Date(next.date);
+    end.setDate(end.getDate()-1);
+  }
+  // Legacy current records predate effective-date fields. Use the known current
+  // campaign start as a display fallback until the workbook is normalized.
+  const fallbackStart=new Date(2026,7,1);
+  return {count:rows.length,start:starts[0]||fallbackStart,end};
 }
 function updatePersonaLaunchTicker(){
   const root=document.getElementById("personaLaunchTicker");
@@ -97,8 +107,8 @@ function updatePersonaLaunchTicker(){
       if(next) next.innerHTML="<span>Scheduled starts</span><b>None found</b>";
     }
     if(current) current.innerHTML=active
-      ? `<span>Current ends</span><b>${active.end ? formatScheduleDate(active.end) : "Ongoing"}</b>`
-      : "<span>Current ends</span><b>No active period found</b>";
+      ? `<span>Current run</span><b>${formatScheduleDate(active.start)} – ${active.end ? formatScheduleDate(active.end) : "Ongoing"}</b>`
+      : "<span>Current run</span><b>No active period found</b>";
   }catch(err){
     console.error("Launch Schedule could not be calculated:",err);
     countdown.textContent="Schedule unavailable";
