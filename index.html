@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Personaville v2 Preview — Database Manager</title>
-  <link rel="stylesheet" href="css/app.css?v=20260917-1618-v7" />
-  <link rel="stylesheet" href="css/header.css?v=20260917-1618-v7" />
+  <link rel="stylesheet" href="css/app.css?v=20260917-1648-v8" />
+  <link rel="stylesheet" href="css/header.css?v=20260917-1648-v8" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -24,15 +24,16 @@
       <button class="nav nav-secondary" data-view="review" type="button">Data Explorer</button>
       <button class="nav nav-secondary" data-view="manage" type="button">Database</button>
       <button class="nav nav-secondary" data-view="admin" type="button">Admin</button>
-      <aside id="personaLaunchTicker" class="launch-schedule-card" aria-label="Persona launch schedule" aria-live="polite">
-        <div class="launch-schedule-title">Launch Schedule</div>
-        <div class="launch-schedule-next">
-          <span>NEXT UPDATE</span>
-          <strong id="personaLaunchTickerCountdown">Loading schedule…</strong>
+      <aside id="personaLaunchTicker" class="launch-schedule-card" aria-label="Persona launch schedule" aria-live="polite"
+        style="margin:22px 8px 12px;padding:10px 9px;background:#27222a;color:#f7f1f8;border:1px solid #514858;border-radius:9px;">
+        <div class="launch-schedule-title" style="color:#d9c9df;font-size:9px;font-weight:900;letter-spacing:.08em;">LAUNCH SCHEDULE</div>
+        <div class="launch-schedule-next" style="margin-top:7px;">
+          <span style="color:#c9bdcd;font-size:9px;font-weight:800;">NEXT UPDATE</span>
+          <strong id="personaLaunchTickerCountdown" style="display:block;color:#f7d9ff;font-size:14px;">Oct 12, 2026</strong>
         </div>
-        <div id="personaLaunchTickerDate" class="launch-schedule-date">Checking persona effective dates</div>
-        <div id="personaCurrentPeriod" class="launch-schedule-row"><span>Current ends</span><b>—</b></div>
-        <div id="personaNextPeriod" class="launch-schedule-row"><span>Scheduled starts</span><b>—</b></div>
+        <div id="personaLaunchTickerDate" class="launch-schedule-date" style="color:#eee5f0;font-size:9px;margin-top:3px;">30 personas scheduled</div>
+        <div id="personaCurrentPeriod" class="launch-schedule-row" style="color:#eee5f0;font-size:8.5px;margin-top:8px;padding-top:6px;border-top:1px solid #514858;"><span>Current run</span><b style="color:#fff;">Aug 1 – Oct 11, 2026</b></div>
+        <div id="personaNextPeriod" class="launch-schedule-row" style="color:#eee5f0;font-size:8.5px;margin-top:5px;padding-top:5px;border-top:1px solid #514858;"><span>Next run</span><b style="color:#fff;">Oct 12, 2026 – Jan 3, 2027</b></div>
       </aside>
     </nav>
 
@@ -416,10 +417,10 @@
 
   <aside id="exportCartTray" class="export-cart-tray" aria-label="Export Cart selection tray" hidden></aside>
 
-  <script src="js/database.js?v=20260917-1618-v7"></script>
-  <script src="js/render.js?v=20260917-1618-v7"></script>
-  <script src="js/asset-manager.js?v=20260917-1618-v7"></script>
-  <script src="js/header.js?v=20260917-1618-v7"></script>
-  <script src="js/app.js?v=20260917-1618-v7"></script>
+  <script src="js/database.js?v=20260917-1648-v8"></script>
+  <script src="js/render.js?v=20260917-1648-v8"></script>
+  <script src="js/asset-manager.js?v=20260917-1648-v8"></script>
+  <script src="js/header.js?v=20260917-1648-v8"></script>
+  <script src="js/app.js?v=20260917-1648-v8"></script>
 </body>
 </html>
