@@ -42,8 +42,90 @@ function modifierChip(m){
   ]);
 }
 
+let personaLaunchTickerTimer = null;
+function parsePersonaLocalDate(value){
+  const m=String(value||"").trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return null;
+  return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),0,0,0,0);
+}
+function nextPersonaLaunch(){
+  const now=new Date();
+  const future=(DB.personas||[]).map(p=>({p,date:parsePersonaLocalDate(p.EffectiveStartDate)}))
+    .filter(x=>x.date && x.date>now && String(x.p.Status||"").toLowerCase()!=="deleted" && String(x.p.LifecycleStatusOverride||"").toLowerCase()!=="inactive")
+    .sort((a,b)=>a.date-b.date);
+  if(!future.length) return null;
+  const date=future[0].date;
+  return {date,count:future.filter(x=>x.date.getTime()===date.getTime()).length};
+}
+function formatScheduleDate(value){
+  const d=value instanceof Date ? value : parsePersonaLocalDate(value);
+  return d ? d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}) : "—";
+}
+function currentPersonaPeriod(){
+  const now=new Date();
+  const rows=(DB.personas||[]).map(p=>({
+    p,start:parsePersonaLocalDate(p.EffectiveStartDate),end:parsePersonaLocalDate(p.EffectiveEndDate)
+  })).filter(x=>String(x.p.Status||"").toLowerCase()!=="deleted" &&
+    String(x.p.LifecycleStatusOverride||"").toLowerCase()!=="inactive" &&
+    (!x.start || x.start<=now) && (!x.end || x.end>=now));
+  if(!rows.length) return null;
+  const starts=rows.map(x=>x.start).filter(Boolean).sort((a,b)=>a-b);
+  const ends=rows.map(x=>x.end).filter(Boolean).sort((a,b)=>a-b);
+  const next=nextPersonaLaunch();
+  let end=ends[0]||null;
+  if(!end && next){
+    end=new Date(next.date);
+    end.setDate(end.getDate()-1);
+  }
+  // Legacy current records predate effective-date fields. Use the known current
+  // campaign start as a display fallback until the workbook is normalized.
+  const fallbackStart=new Date(2026,7,1);
+  return {count:rows.length,start:starts[0]||fallbackStart,end};
+}
+function updatePersonaLaunchTicker(){
+  const root=document.getElementById("personaLaunchTicker");
+  const countdown=document.getElementById("personaLaunchTickerCountdown");
+  const dateLabel=document.getElementById("personaLaunchTickerDate");
+  const current=document.getElementById("personaCurrentPeriod");
+  const next=document.getElementById("personaNextPeriod");
+  if(!root||!countdown||!dateLabel) return;
+  root.hidden=false;
+  try{
+    const launch=nextPersonaLaunch();
+    const active=currentPersonaPeriod();
+    if(launch){
+      const diff=Math.max(0,launch.date-new Date());
+      const days=Math.floor(diff/86400000);
+      const hours=Math.floor((diff%86400000)/3600000);
+      const mins=Math.floor((diff%3600000)/60000);
+      countdown.textContent=`${days}d ${hours}h ${mins}m`;
+      dateLabel.textContent=`${formatScheduleDate(launch.date)} • ${launch.count} persona${launch.count===1?"":"s"}`;
+      if(next) next.innerHTML=`<span>Scheduled starts</span><b>${formatScheduleDate(launch.date)}</b>`;
+    }else{
+      countdown.textContent="No upcoming launch found";
+      dateLabel.textContent="No future Effective Start Date found.";
+      if(next) next.innerHTML="<span>Scheduled starts</span><b>None found</b>";
+    }
+    if(current) current.innerHTML=active
+      ? `<span>Current run</span><b>${formatScheduleDate(active.start)} – ${active.end ? formatScheduleDate(active.end) : "Ongoing"}</b>`
+      : "<span>Current run</span><b>No active period found</b>";
+  }catch(err){
+    console.error("Launch Schedule could not be calculated:",err);
+    countdown.textContent="Schedule unavailable";
+    dateLabel.textContent="Could not calculate schedule from loaded database.";
+    if(current) current.innerHTML="<span>Current ends</span><b>Unavailable</b>";
+    if(next) next.innerHTML="<span>Scheduled starts</span><b>Unavailable</b>";
+  }
+}
+function renderPersonaLaunchTicker(){
+  updatePersonaLaunchTicker();
+  if(personaLaunchTickerTimer) clearInterval(personaLaunchTickerTimer);
+  personaLaunchTickerTimer=setInterval(updatePersonaLaunchTicker,60000);
+}
+
 function renderAll(){
   restoreExportSelection();
+  renderPersonaLaunchTicker();
   renderKpis();
   fillFilters();
   renderTiles();
@@ -523,7 +605,7 @@ function savePersonaEditor(){
   editorSelectedPersonaID = saved.PersonaID;
   renderAll();
   setAdminSection("health");
-  setView("manage", {focus:false});
+  setView("editor", {focus:false});
 }
 function createNewPersonaEditor(){
   startEditingSession();
@@ -1155,7 +1237,7 @@ function renderModifiers(){
   if(!box) return;
   box.innerHTML="";
   if(!DB.modifiers.length){
-    box.appendChild(emptyState("No modifiers are available.", "Load the published database or upload a workbook to review modifiers."));
+    box.appendChild(emptyState("No modifiers are available.", "Load the official database or upload a workbook to review modifiers."));
     return;
   }
   DB.modifiers.forEach(m => {
@@ -1176,7 +1258,7 @@ function renderHealth(){
   box.innerHTML="";
   const rows = buildHealth();
   if(!rows.length){
-    box.appendChild(emptyState("No health checks are available.", "Load the published database or upload a workbook to review database health."));
+    box.appendChild(emptyState("No health checks are available.", "Load the official database or upload a workbook to review database health."));
     return;
   }
   box.appendChild(el("div",{class:"health-review-actions"},[
@@ -1394,12 +1476,58 @@ function renderExportCartTray(){
     el("button",{class:"btn", type:"button", onclick:clearExportSelection},["Clear Selection"])
   ]));
 }
+function formatExportPeriodDate(value){
+  if(!value) return "";
+  const raw=String(value).trim();
+  const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${Number(m[2])}/${Number(m[3])}/${String(m[1]).slice(-2)}`;
+  return raw;
+}
+function exportPeriodGroups(personas){
+  const groups=new Map();
+  personas.forEach(p=>{
+    const start=p.EffectiveStartDate||"", end=p.EffectiveEndDate||"";
+    const lifecycle=p.SupersedesPersonaID ? "Scheduled" : (p.Status||"Current");
+    const key=`${lifecycle}|${start}|${end}`;
+    if(!groups.has(key)) groups.set(key,{lifecycle,start,end,count:0});
+    groups.get(key).count++;
+  });
+  return [...groups.values()];
+}
+function exportPeriodText(personas){
+  const groups=exportPeriodGroups(personas);
+  if(!groups.length) return "";
+  if(groups.length===1){
+    const g=groups[0], range=[formatExportPeriodDate(g.start),formatExportPeriodDate(g.end)].filter(Boolean).join(" – ");
+    return `${String(g.lifecycle).toUpperCase()}${range?`: ${range}`:""} • ${g.count} persona${g.count===1?"":"s"}`;
+  }
+  return `MIXED SET • ${personas.length} personas across ${groups.length} effective periods`;
+}
+function renderExportSetPeriod(){
+  const banner=document.getElementById("exportSetPeriod");
+  if(!banner) return;
+  const personas=selectedExportPersonas();
+  banner.hidden=!personas.length;
+  banner.innerHTML="";
+  if(!personas.length) return;
+  banner.appendChild(el("strong",{},["EXPORT SET"]));
+  banner.appendChild(el("span",{},[exportPeriodText(personas)]));
+  const groups=exportPeriodGroups(personas);
+  if(groups.length>1){
+    groups.forEach(g=>{
+      const range=[formatExportPeriodDate(g.start),formatExportPeriodDate(g.end)].filter(Boolean).join(" – ");
+      banner.appendChild(el("small",{},[`${g.lifecycle}${range?`: ${range}`:""} (${g.count})`]));
+    });
+  }
+}
+
 function renderExportCartList(){
   const list = document.getElementById("exportCartList");
   const empty = document.getElementById("exportCartEmpty");
   const actions = document.getElementById("exportCartActions");
   if(!list) return;
   const personas = selectedExportPersonas();
+  renderExportSetPeriod();
   list.innerHTML = "";
   if(empty) empty.hidden = personas.length > 0;
   if(actions) actions.hidden = personas.length === 0;
@@ -1419,6 +1547,10 @@ function renderPrintArea(){
   area.innerHTML="";
   const selected = selectedExportPersonas();
   if(selected.length){
+    area.appendChild(el("div",{class:"print-export-period"},[
+      el("strong",{},["EXPORT SET"]),
+      el("span",{},[exportPeriodText(selected)])
+    ]));
     selected.forEach((p, index) => area.appendChild(printablePersonaCard(p, index, selected.length)));
     return;
   }
@@ -1433,6 +1565,28 @@ function renderPrintArea(){
   ]));
   area.appendChild(printablePersonaCard(p, 0, 1));
 }
+function personaRunInfo(p){
+  const today=new Date(); today.setHours(0,0,0,0);
+  let start=parsePersonaLocalDate(p.EffectiveStartDate);
+  let end=parsePersonaLocalDate(p.EffectiveEndDate);
+
+  // Legacy current records: use the known 8/1/26 start and end them the day
+  // before the next scheduled launch when their dates are absent.
+  if(!start && !p.SupersedesPersonaID) start=new Date(2026,7,1);
+  if(!end && !p.SupersedesPersonaID){
+    const launch=nextPersonaLaunch();
+    if(launch){ end=new Date(launch.date); end.setDate(end.getDate()-1); }
+  }
+
+  let state="current", label="CURRENT RUN";
+  if(start && today<start){ state="future"; label="FUTURE RUN"; }
+  else if(end && today>end){ state="past"; label="PAST RUN"; }
+
+  const startText=start ? formatScheduleDate(start) : "Start unknown";
+  const endText=end ? formatScheduleDate(end) : "Ongoing";
+  return {state,label,startText,endText};
+}
+
 function printablePersonaCard(p, index=0, total=1){
   const safeName = p.PersonaName || "Untitled persona";
   const card = el("section",{class:"print-card print-persona-page"},[]);
@@ -1440,7 +1594,11 @@ function printablePersonaCard(p, index=0, total=1){
   card.appendChild(el("header",{class:"print-page-header"},[
     el("div",{},[
       el("div",{class:"print-page-kicker"},[`Persona ${index + 1} of ${total}`]),
-      el("h1",{},[safeName])
+      el("h1",{},[safeName]),
+      (()=>{ const run=personaRunInfo(p); return el("div",{class:`print-run-period ${run.state}`},[
+        el("strong",{},[run.label]),
+        el("span",{},[`${run.startText} – ${run.endText}`])
+      ]); })()
     ]),
     el("div",{class:"print-page-meta"},[
       el("span",{},[`Family Group: ${p.FamilyGroup || "—"}`]),
